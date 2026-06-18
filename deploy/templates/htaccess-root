@@ -5,9 +5,19 @@
 
 DirectoryIndex index.html index.php
 
+# Inoltra l'header Authorization a PHP: molti Apache/CGI/FPM lo rimuovono,
+# rompendo l'autenticazione JWT delle rotte admin.
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase __BASE_PATH__/
+
+    # Ridondante ma utile dove SetEnvIf non basta: copia l'header nell'ambiente.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
     # Se il file o la cartella esistono davvero, servili così come sono.
     RewriteCond %{REQUEST_FILENAME} -f [OR]

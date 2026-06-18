@@ -1,7 +1,16 @@
 # Rewrite di tutte le richieste verso il front controller Slim,
 # eccetto i file realmente esistenti (es. embed.js).
+# Inoltra l'header Authorization a PHP (spesso rimosso da Apache/CGI/FPM).
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Copia l'header Authorization nell'ambiente (fallback per il JWT).
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
     # Se il file richiesto esiste, servilo direttamente.
     RewriteCond %{REQUEST_FILENAME} -f [OR]

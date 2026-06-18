@@ -22,6 +22,15 @@ final class AuthMiddleware implements MiddlewareInterface
     {
         $header = $request->getHeaderLine('Authorization');
 
+        // Fallback: alcuni server Apache/CGI rimuovono l'header Authorization
+        // dalla request PSR-7. Lo recuperiamo da $_SERVER (popolato via .htaccess).
+        if ($header === '') {
+            $server = $request->getServerParams();
+            $header = $server['HTTP_AUTHORIZATION']
+                ?? $server['REDIRECT_HTTP_AUTHORIZATION']
+                ?? '';
+        }
+
         if (!preg_match('/^Bearer\s+(.+)$/i', $header, $m)) {
             return Response::error(new SlimResponse(), 'Token mancante.', 401);
         }
