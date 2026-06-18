@@ -1,0 +1,10 @@
+# Blocca QUALSIASI accesso web diretto alla cartella app/
+# (contiene src, vendor, database, .env: deve essere raggiungibile solo da PHP).
+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

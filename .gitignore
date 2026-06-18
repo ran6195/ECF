@@ -6,7 +6,11 @@
 # Ambiente (mai versionare i segreti)
 .env
 backend/.env
+backend/.env.production
 admin/.env
+
+# Output del build di deploy
+/deploy/build/
 
 # Cache strumenti
 .phpunit.result.cache

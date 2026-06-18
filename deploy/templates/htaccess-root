@@ -1,0 +1,37 @@
+# .htaccess di root della sottocartella (es. /testECF su edysma.net).
+# - Serve l'admin (index.html) come pagina di default.
+# - Serve direttamente i file statici esistenti (assets/, embed.js).
+# - Instrada tutto il resto (le rotte /api/...) al front controller Slim.
+
+DirectoryIndex index.html index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase __BASE_PATH__/
+
+    # Se il file o la cartella esistono davvero, servili così come sono.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Altrimenti → front controller Slim.
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Cache lunga per il loader (versionato via ?v= nello snippet).
+<IfModule mod_headers.c>
+    <FilesMatch "embed\.js$">
+        Header set Cache-Control "public, max-age=86400"
+    </FilesMatch>
+</IfModule>
+
+# Non esporre mai eventuali file d'ambiente.
+<FilesMatch "^\.env">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

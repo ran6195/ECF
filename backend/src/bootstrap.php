@@ -31,6 +31,13 @@ return (static function () {
 
     $app = AppFactory::create();
 
+    // Base path quando l'app vive in una sottocartella (es. /testECF su edysma.net).
+    // In locale resta vuoto e non viene impostato.
+    $basePath = trim((string) Env::get('APP_BASE_PATH', ''));
+    if ($basePath !== '') {
+        $app->setBasePath('/' . trim($basePath, '/'));
+    }
+
     // --- Middleware globali (l'ordine conta: l'ultimo aggiunto è il più esterno) ---
     $app->addBodyParsingMiddleware();
     $app->addRoutingMiddleware();
