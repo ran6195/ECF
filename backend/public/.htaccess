@@ -1,0 +1,20 @@
+# Rewrite di tutte le richieste verso il front controller Slim,
+# eccetto i file realmente esistenti (es. embed.js).
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Se il file richiesto esiste, servilo direttamente.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Altrimenti instrada verso index.php.
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Cache lunga per il loader statico (versionato via ?v= nello snippet).
+<IfModule mod_headers.c>
+    <FilesMatch "embed\.js$">
+        Header set Cache-Control "public, max-age=86400"
+    </FilesMatch>
+</IfModule>

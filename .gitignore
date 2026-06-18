@@ -1,0 +1,19 @@
+# Dipendenze
+/backend/vendor/
+/admin/node_modules/
+/admin/dist/
+
+# Ambiente (mai versionare i segreti)
+.env
+backend/.env
+admin/.env
+
+# Cache strumenti
+.phpunit.result.cache
+
+# File di sistema / editor
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/

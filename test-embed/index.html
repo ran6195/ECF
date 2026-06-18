@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ECF · Pagina di test embed</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; color: #111; background: #f8fafc; }
+    h1 { font-size: 1.5rem; }
+    .host-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0; }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
+    .note { color: #64748b; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <h1>Pagina di test — ECF embed</h1>
+  <p class="note">
+    Questa pagina simula un sito terzo. Il form qui sotto è iniettato da
+    <code>embed.js</code> dentro uno Shadow DOM e parla con l'API locale.
+  </p>
+
+  <p class="note">
+    Sostituisci l'<code>UUID</code> con quello del form di esempio stampato dal seed,
+    e verifica che <code>data-api</code> punti alla tua API (default
+    <code>http://localhost:8080</code>).
+  </p>
+
+  <div class="host-card">
+    <h2>Form "Contatti"</h2>
+    <!-- Sostituisci con l'UUID reale del tuo form -->
+    <div data-ecf-form="INSERISCI-UUID-QUI"></div>
+  </div>
+
+  <!--
+    Un solo tag <script>. La base URL dell'API è dedotta da data-api
+    (oppure dall'attributo src se embed.js è servito dalla stessa origine API).
+  -->
+  <script src="http://localhost:8080/embed.js" data-api="http://localhost:8080" async></script>
+</body>
+</html>
