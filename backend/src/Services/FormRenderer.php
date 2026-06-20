@@ -273,7 +273,7 @@ final class FormRenderer
             color: var(--ecf-text); font-family: var(--ecf-font); line-height: 1.5; box-sizing: border-box;
           }
           .ecf-form-wrap *, .ecf-form-wrap *::before, .ecf-form-wrap *::after { box-sizing: inherit; }
-          .ecf-form { width: 100%; max-width: var(--ecf-max-width); margin: 0; padding: 24px; border: 1px solid var(--ecf-border); border-radius: calc(var(--ecf-radius) + 4px); background: var(--ecf-bg); }
+          .ecf-form { width: 100%; max-width: var(--ecf-max-width); margin: var(--ecf-form-margin); padding: 24px; border: 1px solid var(--ecf-border); border-radius: calc(var(--ecf-radius) + 4px); background: var(--ecf-bg); }
           .ecf-title { margin: 0 0 4px; font-size: 1.25rem; font-weight: 700; color: var(--ecf-text); }
           .ecf-desc { margin: 0 0 16px; color: #6b7280; font-size: .925rem; }
           .ecf-fields { display: flex; flex-direction: column; gap: 16px; }
@@ -316,6 +316,7 @@ final class FormRenderer
             '--ecf-font' => $theme['fontFamily'],
             '--ecf-btn-text' => $theme['buttonText'],
             '--ecf-max-width' => $theme['maxWidth'],
+            '--ecf-form-margin' => $this->alignToMargin($theme['align'] ?? 'center'),
         ];
 
         $lines = [];
@@ -326,6 +327,19 @@ final class FormRenderer
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Converte l'allineamento del form (left|center|right) nel margine orizzontale.
+     * Ha effetto solo quando il form è più stretto del contenitore (max-width attivo).
+     */
+    private function alignToMargin(string $align): string
+    {
+        return match ($align) {
+            'center' => '0 auto',
+            'right' => '0 0 0 auto',
+            default => '0 auto 0 0',
+        };
     }
 
     /**

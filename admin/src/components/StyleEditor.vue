@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { DEFAULT_THEME, FONT_OPTIONS, COLOR_FIELDS } from '../theme'
+import { DEFAULT_THEME, FONT_OPTIONS, COLOR_FIELDS, ALIGN_OPTIONS } from '../theme'
 
 // Mutiamo direttamente l'oggetto style reattivo del parent.
 const props = defineProps({
@@ -99,6 +99,22 @@ function resetTheme() {
     </div>
 
     <div class="form-row" style="margin-top:14px">
+      <label class="field-label small">Posizione nel contenitore</label>
+      <div class="align-group">
+        <button
+          v-for="a in ALIGN_OPTIONS"
+          :key="a.value"
+          type="button"
+          :class="['align-btn', { active: style.theme.align === a.value }]"
+          @click="style.theme.align = a.value"
+        >{{ a.label }}</button>
+      </div>
+      <p class="muted small" style="margin:4px 0 0">
+        Visibile quando il form non è a piena larghezza.
+      </p>
+    </div>
+
+    <div class="form-row" style="margin-top:14px">
       <label class="field-label small">CSS avanzato (opzionale)</label>
       <textarea
         v-model="style.customCss"
@@ -126,5 +142,9 @@ function resetTheme() {
 .css-area { font-family: monospace; font-size: .82rem; }
 .checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .checkbox-row input { margin: 0; }
+.align-group { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.align-btn { padding: 7px 16px; font-size: .9rem; background: #fff; border: 0; border-right: 1px solid var(--border); cursor: pointer; color: var(--text, #1f2937); }
+.align-btn:last-child { border-right: 0; }
+.align-btn.active { background: var(--primary, #4f46e5); color: #fff; }
 @media (max-width: 600px) { .color-grid { grid-template-columns: 1fr; } }
 </style>

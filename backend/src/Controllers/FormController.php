@@ -293,6 +293,10 @@ final class FormController
                 if ($token === 'maxWidth' && !preg_match('/^(\d{1,4}(px|%)|none)$/', $clean)) {
                     continue;
                 }
+                // La posizione accetta solo i tre allineamenti previsti.
+                if ($token === 'align' && !in_array($clean, ['left', 'center', 'right'], true)) {
+                    continue;
+                }
                 $theme[$token] = $clean;
             }
         }

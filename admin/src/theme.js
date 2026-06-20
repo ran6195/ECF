@@ -9,7 +9,15 @@ export const DEFAULT_THEME = {
   fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
   buttonText: '#ffffff',
   maxWidth: '720px',
+  align: 'center',
 }
+
+// Posizione del form nel contenitore (effetto visibile quando non è a piena larghezza).
+export const ALIGN_OPTIONS = [
+  { value: 'left', label: 'Sinistra' },
+  { value: 'center', label: 'Centro' },
+  { value: 'right', label: 'Destra' },
+]
 
 export const FONT_OPTIONS = [
   { value: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', label: 'Sistema (default)' },

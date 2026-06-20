@@ -49,6 +49,7 @@ class Form extends Model
         'fontFamily' => 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
         'buttonText' => '#ffffff',
         'maxWidth' => '720px',
+        'align' => 'center',
     ];
 
     /**

@@ -79,6 +79,30 @@ final class FormRendererTest extends TestCase
         $this->assertStringContainsString('--ecf-max-width: 100%;', $html);
     }
 
+    public function testFormIsCenteredByDefault(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'nome', 'label' => 'Nome', 'type' => 'text'],
+        ]);
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringContainsString('--ecf-form-margin: 0 auto;', $html);
+        $this->assertStringContainsString('margin: var(--ecf-form-margin);', $html);
+    }
+
+    public function testFormAlignmentCanBeOverridden(): void
+    {
+        $form = Support::makeForm(
+            [['key' => 'nome', 'label' => 'Nome', 'type' => 'text']],
+            ['style' => ['theme' => ['align' => 'right']]]
+        );
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringContainsString('--ecf-form-margin: 0 0 0 auto;', $html);
+    }
+
     public function testCustomCssCannotBreakOutOfStyleTag(): void
     {
         $form = Support::makeForm(
