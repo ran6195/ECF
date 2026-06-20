@@ -27,7 +27,7 @@ final class FormRenderer
         }
 
         $honeypot = $this->renderHoneypot();
-        $style = $this->style();
+        $style = $this->style($form);
         $title = $this->e($form->name);
         $description = $form->description
             ? '<p class="ecf-desc">' . $this->e($form->description) . '</p>'
@@ -258,38 +258,88 @@ final class FormRenderer
         return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
-    private function style(): string
+    private function style(Form $form): string
     {
-        return <<<'CSS'
+        $vars = $this->themeVars($form->theme());
+        $custom = $this->sanitizeCustomCss($form->customCss());
+        $customBlock = $custom !== '' ? "\n          /* CSS personalizzato del form */\n          {$custom}" : '';
+
+        // Il CSS base usa variabili (--ecf-*) sovrascrivibili dal tema del form.
+        return <<<CSS
         <style>
-          :host { all: initial; }
-          .ecf-form-wrap { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1f2937; line-height: 1.5; box-sizing: border-box; }
+          :host { all: initial; display: block; width: 100%; }
+          .ecf-form-wrap {
+        {$vars}
+            color: var(--ecf-text); font-family: var(--ecf-font); line-height: 1.5; box-sizing: border-box;
+          }
           .ecf-form-wrap *, .ecf-form-wrap *::before, .ecf-form-wrap *::after { box-sizing: inherit; }
-          .ecf-form { max-width: 560px; margin: 0; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; }
-          .ecf-title { margin: 0 0 4px; font-size: 1.25rem; font-weight: 700; }
+          .ecf-form { width: 100%; max-width: var(--ecf-max-width); margin: 0; padding: 24px; border: 1px solid var(--ecf-border); border-radius: calc(var(--ecf-radius) + 4px); background: var(--ecf-bg); }
+          .ecf-title { margin: 0 0 4px; font-size: 1.25rem; font-weight: 700; color: var(--ecf-text); }
           .ecf-desc { margin: 0 0 16px; color: #6b7280; font-size: .925rem; }
           .ecf-fields { display: flex; flex-direction: column; gap: 16px; }
           .ecf-field { display: flex; flex-direction: column; gap: 6px; border: 0; padding: 0; margin: 0; }
-          .ecf-label { font-weight: 600; font-size: .9rem; }
+          .ecf-label { font-weight: 600; font-size: .9rem; color: var(--ecf-text); }
           .ecf-req { color: #dc2626; }
-          .ecf-input { width: 100%; padding: 10px 12px; font-size: .95rem; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; color: inherit; transition: border-color .15s, box-shadow .15s; }
-          .ecf-input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+          .ecf-input { width: 100%; padding: 10px 12px; font-size: .95rem; border: 1px solid var(--ecf-border); border-radius: var(--ecf-radius); background: var(--ecf-bg); color: var(--ecf-text); transition: border-color .15s, box-shadow .15s; }
+          .ecf-input:focus { outline: none; border-color: var(--ecf-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ecf-primary) 22%, transparent); }
           .ecf-textarea { resize: vertical; min-height: 96px; }
           .ecf-options { display: flex; flex-direction: column; gap: 8px; }
-          .ecf-option { display: flex; align-items: center; gap: 8px; font-weight: 400; font-size: .95rem; cursor: pointer; }
-          .ecf-option input { margin: 0; }
+          .ecf-option { display: flex; align-items: center; gap: 8px; font-weight: 400; font-size: .95rem; cursor: pointer; color: var(--ecf-text); }
+          .ecf-option input { margin: 0; accent-color: var(--ecf-primary); }
           .ecf-actions { margin-top: 20px; }
-          .ecf-submit { appearance: none; border: 0; cursor: pointer; background: #4f46e5; color: #fff; font-size: .95rem; font-weight: 600; padding: 11px 22px; border-radius: 8px; transition: background .15s; }
-          .ecf-submit:hover { background: #4338ca; }
+          .ecf-submit { appearance: none; border: 0; cursor: pointer; background: var(--ecf-primary); color: var(--ecf-btn-text); font-size: .95rem; font-weight: 600; padding: 11px 22px; border-radius: var(--ecf-radius); transition: background .15s; }
+          .ecf-submit:hover { background: var(--ecf-primary-hover); }
           .ecf-submit:disabled { opacity: .6; cursor: default; }
           .ecf-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
-          .ecf-message { margin-top: 16px; padding: 12px 14px; border-radius: 8px; font-size: .9rem; }
+          .ecf-message { margin-top: 16px; padding: 12px 14px; border-radius: var(--ecf-radius); font-size: .9rem; }
           .ecf-message[hidden] { display: none; }
           .ecf-message.is-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
           .ecf-message.is-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
           .ecf-input.is-invalid { border-color: #dc2626; }
-          .ecf-field-error { color: #dc2626; font-size: .82rem; margin: 0; }
+          .ecf-field-error { color: #dc2626; font-size: .82rem; margin: 0; }{$customBlock}
         </style>
         CSS;
+    }
+
+    /**
+     * Genera le dichiarazioni delle variabili CSS dal tema.
+     */
+    private function themeVars(array $theme): string
+    {
+        $map = [
+            '--ecf-primary' => $theme['primary'],
+            '--ecf-primary-hover' => $theme['primaryHover'],
+            '--ecf-text' => $theme['text'],
+            '--ecf-bg' => $theme['background'],
+            '--ecf-border' => $theme['border'],
+            '--ecf-radius' => $theme['radius'],
+            '--ecf-font' => $theme['fontFamily'],
+            '--ecf-btn-text' => $theme['buttonText'],
+            '--ecf-max-width' => $theme['maxWidth'],
+        ];
+
+        $lines = [];
+        foreach ($map as $name => $value) {
+            // I valori del tema sono colori/dimensioni/font: niente ';' o '}' che spezzino il CSS.
+            $clean = str_replace([';', '}', '{', '<'], '', (string) $value);
+            $lines[] = "    {$name}: {$clean};";
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Impedisce la chiusura anticipata del tag <style> dal CSS personalizzato.
+     */
+    private function sanitizeCustomCss(string $css): string
+    {
+        if (trim($css) === '') {
+            return '';
+        }
+
+        // Rimuove qualsiasi tentativo di chiudere il blocco <style> o iniettare tag.
+        $css = preg_replace('/<\s*\/?\s*(style|script)/i', '', $css) ?? '';
+
+        return trim($css);
     }
 }

@@ -82,6 +82,12 @@ Ripeti i passi 2 e 4 (ricostruisci e ricarica). La **3** serve solo la prima
 volta o se cambia lo schema. Se modifichi lo schema, aggiorna `app/` e applica le
 variazioni al DB (nuovo import mirato o ALTER via phpMyAdmin).
 
+### Migrazioni schema su DB esistente
+Le variazioni di schema per DB già popolati stanno in `deploy/migrations/`. Da
+applicare **una volta** via phpMyAdmin, in ordine:
+
+- `2026-06-18-add-forms-style.sql` — aggiunge `forms.style` (stile/tema per form).
+
 ## Cambiare sottocartella
 Modifica `BASE_PATH` in cima a `deploy/build.sh` e `APP_BASE_PATH` +
 `APP_URL` in `backend/.env.production` (e `VITE_API_BASE_URL` in

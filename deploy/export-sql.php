@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS `forms` (
   `description` TEXT NULL,
   `success_message` VARCHAR(255) NULL,
   `allowed_origins` JSON NULL,
+  `style` JSON NULL,
   `status` ENUM('draft','active','disabled') NOT NULL DEFAULT 'draft',
   `created_at` TIMESTAMP NULL DEFAULT NULL,
   `updated_at` TIMESTAMP NULL DEFAULT NULL,

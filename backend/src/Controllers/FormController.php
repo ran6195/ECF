@@ -6,8 +6,10 @@ namespace Ecf\Controllers;
 
 use Ecf\Models\Form;
 use Ecf\Models\FormField;
+use Ecf\Services\FormRenderer;
 use Ecf\Support\Response;
 use Illuminate\Database\Capsule\Manager as DB;
+use Illuminate\Database\Eloquent\Collection;
 use Psr\Http\Message\ResponseInterface as Response7;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -63,6 +65,7 @@ final class FormController
             'description' => $this->nullableStr($body['description'] ?? null),
             'success_message' => $this->nullableStr($body['success_message'] ?? null),
             'allowed_origins' => $this->normalizeOrigins($body['allowed_origins'] ?? null),
+            'style' => $this->normalizeStyle($body['style'] ?? null),
             'status' => $body['status'] ?? 'draft',
         ]);
         $form->save();
@@ -92,6 +95,7 @@ final class FormController
             'description' => $this->nullableStr($body['description'] ?? null),
             'success_message' => $this->nullableStr($body['success_message'] ?? null),
             'allowed_origins' => $this->normalizeOrigins($body['allowed_origins'] ?? null),
+            'style' => $this->normalizeStyle($body['style'] ?? null),
             'status' => $body['status'] ?? $form->status,
         ]);
         $form->save();
@@ -114,6 +118,42 @@ final class FormController
         return Response::success($response, null, 'Form eliminato.');
     }
 
+    /**
+     * POST /api/forms/preview → rende l'HTML del form (senza salvarlo) usando
+     * lo stesso FormRenderer della produzione. Serve all'anteprima live dell'admin.
+     */
+    public function preview(Request $request, Response7 $response): Response7
+    {
+        $body = (array) ($request->getParsedBody() ?? []);
+
+        $form = new Form([
+            'uuid' => 'preview',
+            'name' => trim((string) ($body['name'] ?? 'Anteprima')),
+            'description' => $this->nullableStr($body['description'] ?? null),
+            'style' => $this->normalizeStyle($body['style'] ?? null),
+        ]);
+
+        // Costruisce i campi in memoria (non tocca il DB).
+        $fields = new Collection();
+        foreach (array_values((array) ($body['fields'] ?? [])) as $i => $raw) {
+            $fields->push(new FormField([
+                'key' => $this->slugKey((string) ($raw['key'] ?? ''), $i),
+                'label' => trim((string) ($raw['label'] ?? '')),
+                'type' => in_array($raw['type'] ?? '', self::FIELD_TYPES, true) ? $raw['type'] : 'text',
+                'required' => !empty($raw['required']),
+                'placeholder' => $this->nullableStr($raw['placeholder'] ?? null),
+                'options' => $this->normalizeOptions($raw['options'] ?? null),
+                'validation' => $this->normalizeValidation($raw['validation'] ?? null),
+                'sort_order' => $i,
+            ]));
+        }
+        $form->setRelation('fields', $fields);
+
+        $html = (new FormRenderer())->render($form);
+
+        return Response::success($response, ['html' => $html]);
+    }
+
     // --- Helpers ---------------------------------------------------------
 
     /**
@@ -124,7 +164,20 @@ final class FormController
     {
         DB::connection()->transaction(function () use ($form, $incoming) {
             $existingIds = $form->fields()->pluck('id')->all();
-            $keptIds = [];
+
+            // Cancella PRIMA i campi non più presenti: così le loro `key` si
+            // liberano e un nuovo campo può riusarle senza violare UNIQUE(form_id,key).
+            $incomingIds = [];
+            foreach ($incoming as $raw) {
+                $id = isset($raw['id']) ? (int) $raw['id'] : 0;
+                if ($id > 0 && in_array($id, $existingIds, true)) {
+                    $incomingIds[] = $id;
+                }
+            }
+            $toDelete = array_diff($existingIds, $incomingIds);
+            if ($toDelete !== []) {
+                FormField::whereIn('id', $toDelete)->delete();
+            }
 
             foreach (array_values($incoming) as $index => $raw) {
                 $data = [
@@ -140,19 +193,11 @@ final class FormController
 
                 $id = isset($raw['id']) ? (int) $raw['id'] : 0;
                 if ($id > 0 && in_array($id, $existingIds, true)) {
-                    $field = $form->fields()->find($id);
-                    $field->update($data);
-                    $keptIds[] = $id;
+                    $form->fields()->find($id)->update($data);
                 } else {
                     $data['form_id'] = $form->id;
-                    $field = FormField::create($data);
-                    $keptIds[] = $field->id;
+                    FormField::create($data);
                 }
-            }
-
-            $toDelete = array_diff($existingIds, $keptIds);
-            if ($toDelete !== []) {
-                FormField::whereIn('id', $toDelete)->delete();
             }
         });
     }
@@ -166,6 +211,7 @@ final class FormController
             'description' => $form->description,
             'success_message' => $form->success_message,
             'allowed_origins' => $form->allowed_origins,
+            'style' => $form->style,
             'status' => $form->status,
             'fields' => $form->fields->map(fn (FormField $f) => [
                 'id' => $f->id,
@@ -223,6 +269,47 @@ final class FormController
         ), fn ($o) => $o !== ''));
 
         return $clean === [] ? null : $clean;
+    }
+
+    /**
+     * Normalizza lo stile del form: { theme: {token:valore}, customCss: string }.
+     * Tiene solo i token di tema conosciuti e ripulisce il CSS personalizzato.
+     */
+    private function normalizeStyle(mixed $value): ?array
+    {
+        if (!is_array($value)) {
+            return null;
+        }
+
+        $allowedTokens = array_keys(Form::THEME_DEFAULTS);
+        $theme = [];
+        $rawTheme = is_array($value['theme'] ?? null) ? $value['theme'] : [];
+        foreach ($allowedTokens as $token) {
+            $v = $rawTheme[$token] ?? null;
+            if (is_string($v) && trim($v) !== '') {
+                // Niente caratteri che possano spezzare il CSS.
+                $clean = trim(str_replace([';', '{', '}', '<', '>'], '', $v));
+                // La larghezza accetta solo una lunghezza CSS semplice (px/% o "none").
+                if ($token === 'maxWidth' && !preg_match('/^(\d{1,4}(px|%)|none)$/', $clean)) {
+                    continue;
+                }
+                $theme[$token] = $clean;
+            }
+        }
+
+        $customCss = is_string($value['customCss'] ?? null) ? trim($value['customCss']) : '';
+        // Taglia a una lunghezza ragionevole per sicurezza.
+        $customCss = mb_substr($customCss, 0, 20000);
+
+        $out = [];
+        if ($theme !== []) {
+            $out['theme'] = $theme;
+        }
+        if ($customCss !== '') {
+            $out['customCss'] = $customCss;
+        }
+
+        return $out === [] ? null : $out;
     }
 
     private function normalizeOptions(mixed $value): ?array

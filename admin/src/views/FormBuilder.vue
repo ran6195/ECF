@@ -6,6 +6,8 @@ import { api, ApiError } from '../api/client'
 import FieldEditor from '../components/FieldEditor.vue'
 import FormPreview from '../components/FormPreview.vue'
 import SnippetBox from '../components/SnippetBox.vue'
+import StyleEditor from '../components/StyleEditor.vue'
+import { defaultStyle, hydrateStyle } from '../theme'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,6 +20,7 @@ const form = reactive({
   description: '',
   success_message: '',
   status: 'draft',
+  style: defaultStyle(),
   fields: [],
 })
 
@@ -48,6 +51,7 @@ async function load() {
   try {
     const res = await api.get(`/api/forms/${route.params.id}`)
     Object.assign(form, res.data)
+    form.style = hydrateStyle(res.data.style)
     // Aggiunge una chiave locale univoca a ogni campo (per il drag & drop).
     form.fields = res.data.fields.map((f) => ({ ...f, _k: keySeq++ }))
     originsText.value = Array.isArray(res.data.allowed_origins) ? res.data.allowed_origins.join('\n') : ''
@@ -70,6 +74,7 @@ function buildPayload() {
     success_message: form.success_message,
     status: form.status,
     allowed_origins: origins.length ? origins : null,
+    style: form.style,
     fields: form.fields.map((f, i) => ({
       id: f.id || undefined,
       key: f.key,
@@ -98,6 +103,7 @@ async function save() {
       res = await api.post('/api/forms', payload)
     }
     Object.assign(form, res.data)
+    form.style = hydrateStyle(res.data.style)
     form.fields = res.data.fields.map((f) => ({ ...f, _k: keySeq++ }))
     originsText.value = Array.isArray(res.data.allowed_origins) ? res.data.allowed_origins.join('\n') : ''
     success.value = isEdit.value ? 'Form aggiornato.' : 'Form creato.'
@@ -177,6 +183,12 @@ onMounted(load)
           </draggable>
         </div>
 
+        <!-- Stile -->
+        <div class="card">
+          <h3 style="margin-top:0">Stile</h3>
+          <StyleEditor :style="form.style" />
+        </div>
+
         <div class="flex" style="margin-bottom:40px">
           <button class="btn" :disabled="saving" @click="save">
             {{ saving ? 'Salvataggio...' : (isEdit ? 'Salva modifiche' : 'Crea form') }}
@@ -188,7 +200,7 @@ onMounted(load)
       <aside class="builder-side">
         <div class="card">
           <h4 style="margin-top:0">Anteprima</h4>
-          <FormPreview :name="form.name" :description="form.description" :fields="form.fields" />
+          <FormPreview :name="form.name" :description="form.description" :fields="form.fields" :style="form.style" />
         </div>
         <div v-if="form.uuid" class="card">
           <SnippetBox :uuid="form.uuid" />

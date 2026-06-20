@@ -26,12 +26,52 @@ class Form extends Model
         'description',
         'success_message',
         'allowed_origins',
+        'style',
         'status',
     ];
 
     protected $casts = [
         'allowed_origins' => 'array',
+        'style' => 'array',
     ];
+
+    /**
+     * Valori di default del tema (usati quando il form non li sovrascrive).
+     * @var array<string, string>
+     */
+    public const THEME_DEFAULTS = [
+        'primary' => '#4f46e5',
+        'primaryHover' => '#4338ca',
+        'text' => '#1f2937',
+        'background' => '#ffffff',
+        'border' => '#e5e7eb',
+        'radius' => '8px',
+        'fontFamily' => 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        'buttonText' => '#ffffff',
+        'maxWidth' => '720px',
+    ];
+
+    /**
+     * Tema risolto: default + override del form.
+     * @return array<string, string>
+     */
+    public function theme(): array
+    {
+        $style = $this->style ?? [];
+        $theme = is_array($style['theme'] ?? null) ? $style['theme'] : [];
+
+        return array_merge(self::THEME_DEFAULTS, array_filter(
+            $theme,
+            fn ($v) => is_string($v) && $v !== ''
+        ));
+    }
+
+    public function customCss(): string
+    {
+        $style = $this->style ?? [];
+
+        return is_string($style['customCss'] ?? null) ? $style['customCss'] : '';
+    }
 
     public function fields(): HasMany
     {

@@ -59,6 +59,7 @@ return (static function () {
     $app->group('/api/forms', function ($group) {
         $group->get('', [FormController::class, 'index']);
         $group->post('', [FormController::class, 'store']);
+        $group->post('/preview', [FormController::class, 'preview']);
         $group->get('/{id:[0-9]+}', [FormController::class, 'show']);
         $group->put('/{id:[0-9]+}', [FormController::class, 'update']);
         $group->delete('/{id:[0-9]+}', [FormController::class, 'destroy']);

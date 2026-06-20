@@ -93,6 +93,9 @@ Login con le credenziali del seed (`admin@edysma.test` / `password`). Da qui:
 - **Lista form** con stato, UUID, numero di submission e **snippet copiabile**;
 - **Form builder** con editor dei campi (drag & drop per riordinare), proprietà
   per campo, anteprima live, `success_message`, `status` e origini autorizzate;
+- **Stile per form**: tema (colori, font, raggio bordi) + CSS avanzato opzionale,
+  applicati nello Shadow DOM. L'anteprima live è renderizzata dal backend
+  (`POST /api/forms/preview`), identica al render reale;
 - **Submission** con tabella, dettaglio del payload ed **export CSV**.
 
 Build di produzione: `npm run build` → cartella `dist/` (statica, pubblicabile

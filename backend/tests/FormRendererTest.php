@@ -36,6 +36,62 @@ final class FormRendererTest extends TestCase
         $this->assertStringContainsString('ecf-hp', $html);
     }
 
+    public function testThemeVariablesAndCustomCssAreApplied(): void
+    {
+        $form = Support::makeForm(
+            [['key' => 'nome', 'label' => 'Nome', 'type' => 'text']],
+            ['style' => [
+                'theme' => ['primary' => '#ff0000', 'background' => '#0f172a'],
+                'customCss' => '.ecf-submit { letter-spacing: 1px; }',
+            ]]
+        );
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringContainsString('--ecf-primary: #ff0000;', $html);
+        $this->assertStringContainsString('--ecf-bg: #0f172a;', $html);
+        $this->assertStringContainsString('letter-spacing: 1px', $html);
+    }
+
+    public function testFormIsFullWidthWithDefaultReadabilityCap(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'nome', 'label' => 'Nome', 'type' => 'text'],
+        ]);
+
+        $html = (new FormRenderer())->render($form);
+
+        // Il form occupa il 100% del contenitore...
+        $this->assertStringContainsString('width: 100%; max-width: var(--ecf-max-width);', $html);
+        // ...con il cap di leggibilità di default a 720px.
+        $this->assertStringContainsString('--ecf-max-width: 720px;', $html);
+    }
+
+    public function testMaxWidthCanBeOverriddenToFull(): void
+    {
+        $form = Support::makeForm(
+            [['key' => 'nome', 'label' => 'Nome', 'type' => 'text']],
+            ['style' => ['theme' => ['maxWidth' => '100%']]]
+        );
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringContainsString('--ecf-max-width: 100%;', $html);
+    }
+
+    public function testCustomCssCannotBreakOutOfStyleTag(): void
+    {
+        $form = Support::makeForm(
+            [['key' => 'nome', 'label' => 'Nome', 'type' => 'text']],
+            ['style' => ['customCss' => '</style><script>alert(1)</script>']]
+        );
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringNotContainsString('<script>', $html);
+        $this->assertStringNotContainsString('</style><', $html);
+    }
+
     public function testDynamicValuesAreEscaped(): void
     {
         $form = Support::makeForm([

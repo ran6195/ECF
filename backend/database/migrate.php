@@ -56,10 +56,19 @@ if (!$schema->hasTable('forms')) {
         $t->text('description')->nullable();
         $t->string('success_message', 255)->nullable();
         $t->json('allowed_origins')->nullable();
+        $t->json('style')->nullable();
         $t->enum('status', ['draft', 'active', 'disabled'])->default('draft');
         $t->timestamps();
     });
     echo "Creata tabella: forms\n";
+}
+
+// --- forms.style (per installazioni preesistenti) ---
+if ($schema->hasTable('forms') && !$schema->hasColumn('forms', 'style')) {
+    $schema->table('forms', function (Blueprint $t) {
+        $t->json('style')->nullable()->after('allowed_origins');
+    });
+    echo "Aggiunta colonna: forms.style\n";
 }
 
 // --- form_fields ---
