@@ -72,11 +72,20 @@
     document.head.appendChild(script);
   }
 
-  // Renderizza il widget reCAPTCHA, se il form lo richiede, dentro lo shadow root.
-  function renderRecaptchaIfPresent(shadow, form) {
-    var el = shadow.querySelector('.ecf-recaptcha');
-    var sitekey = el && el.getAttribute('data-sitekey');
-    if (!el || !sitekey) return;
+  // Renderizza il widget reCAPTCHA, se il form lo richiede. Il widget NON può
+  // vivere dentro lo shadow root (Google reCAPTCHA non è compatibile con lo
+  // Shadow DOM: le sue iframe interne vanno in conflitto con l'incapsulamento,
+  // causando un SecurityError "Blocked a frame..."). Il div del widget viene
+  // quindi creato nel DOM principale (figlio diretto di "container", non dello
+  // shadow root) e proiettato visivamente al punto giusto tramite lo
+  // <slot name="ecf-recaptcha"> presente nel form renderizzato.
+  function renderRecaptchaIfPresent(form, container) {
+    var sitekey = form.getAttribute('data-recaptcha-sitekey');
+    if (!sitekey) return;
+
+    var el = document.createElement('div');
+    el.setAttribute('slot', 'ecf-recaptcha');
+    container.appendChild(el);
 
     ensureRecaptchaScript(function () {
       var widgetId = window.grecaptcha.render(el, { sitekey: sitekey });
@@ -99,7 +108,7 @@
         var shadow = container.shadowRoot || container.attachShadow({ mode: 'open' });
         shadow.innerHTML = html;
         var form = wireForm(shadow, uuid);
-        if (form) renderRecaptchaIfPresent(shadow, form);
+        if (form) renderRecaptchaIfPresent(form, container);
       })
       .catch(function (err) {
         container.textContent = 'Impossibile caricare il modulo.';

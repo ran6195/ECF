@@ -29,6 +29,13 @@ final class FormRenderer
         $theme = $form->theme();
         $honeypot = $this->renderHoneypot();
         $recaptcha = $this->renderRecaptcha($form);
+        // Il sitekey viaggia come attributo sul <form> (leggibile da embed.js
+        // attraversando lo shadow root senza problemi): il widget reCAPTCHA vero
+        // e proprio NON può vivere dentro lo shadow DOM (vedi renderRecaptcha()),
+        // quindi embed.js lo crea nel DOM principale e lo assegna allo <slot> qui sotto.
+        $recaptchaAttr = $form->recaptchaActive()
+            ? ' data-recaptcha-sitekey="' . $this->e((string) $form->recaptcha_site_key) . '"'
+            : '';
         $style = $this->style($form, $theme);
         $title = $this->e($form->name);
         $description = $form->description
@@ -40,7 +47,7 @@ final class FormRenderer
         return <<<HTML
         {$style}
         <div class="ecf-form-wrap">
-          <form class="ecf-form" data-ecf-uuid="{$this->e($form->uuid)}" novalidate>
+          <form class="ecf-form" data-ecf-uuid="{$this->e($form->uuid)}"{$recaptchaAttr} novalidate>
             <h3 class="ecf-title">{$title}</h3>
             {$description}
             <div class="ecf-fields">
@@ -237,9 +244,12 @@ final class FormRenderer
     }
 
     /**
-     * Div contenitore per il widget reCAPTCHA v2, renderizzato esplicitamente da
-     * embed.js (il rendering automatico di Google non troverebbe l'elemento dentro
-     * lo Shadow DOM). Legge solo la site key, mai la secret key (server-side only).
+     * Google reCAPTCHA non è progettato per funzionare dentro uno Shadow DOM: le
+     * sue iframe interne usano window.frames per nome e vanno in conflitto con
+     * l'incapsulamento dello shadow root (SecurityError "Blocked a frame..."),
+     * a prescindere da come viene renderizzato. Il workaround standard è uno
+     * <slot>: il widget vero e proprio viene creato da embed.js nel DOM
+     * principale (light DOM) e proiettato qui visivamente tramite lo slot.
      */
     private function renderRecaptcha(Form $form): string
     {
@@ -247,10 +257,7 @@ final class FormRenderer
             return '';
         }
 
-        return sprintf(
-            '<div class="ecf-recaptcha" data-sitekey="%s"></div>',
-            $this->e((string) $form->recaptcha_site_key)
-        );
+        return '<div class="ecf-recaptcha"><slot name="ecf-recaptcha"></slot></div>';
     }
 
     private function renderHoneypot(): string
