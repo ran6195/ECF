@@ -42,6 +42,48 @@
     return API_BASE + '/api/embed/' + encodeURIComponent(uuid) + '/' + action;
   }
 
+  // --- Caricamento one-time dello script reCAPTCHA nel document principale ---
+  // Il rendering automatico di Google (scansione del document per [data-sitekey])
+  // non troverebbe mai il div dentro lo Shadow DOM: serve rendering esplicito
+  // (render=explicit), quindi grecaptcha.render() va chiamato a mano dopo il load.
+  var recaptchaReady = false;
+  var recaptchaCallbacks = [];
+
+  window.__ecfRecaptchaOnLoad = function () {
+    recaptchaReady = true;
+    var callbacks = recaptchaCallbacks;
+    recaptchaCallbacks = [];
+    callbacks.forEach(function (cb) { cb(); });
+  };
+
+  function ensureRecaptchaScript(callback) {
+    if (recaptchaReady && window.grecaptcha && window.grecaptcha.render) {
+      callback();
+      return;
+    }
+    recaptchaCallbacks.push(callback);
+    if (document.querySelector('script[data-ecf-recaptcha]')) return; // già in caricamento
+
+    var script = document.createElement('script');
+    script.src = 'https://www.google.com/recaptcha/api.js?render=explicit&onload=__ecfRecaptchaOnLoad';
+    script.async = true;
+    script.defer = true;
+    script.setAttribute('data-ecf-recaptcha', '1');
+    document.head.appendChild(script);
+  }
+
+  // Renderizza il widget reCAPTCHA, se il form lo richiede, dentro lo shadow root.
+  function renderRecaptchaIfPresent(shadow, form) {
+    var el = shadow.querySelector('.ecf-recaptcha');
+    var sitekey = el && el.getAttribute('data-sitekey');
+    if (!el || !sitekey) return;
+
+    ensureRecaptchaScript(function () {
+      var widgetId = window.grecaptcha.render(el, { sitekey: sitekey });
+      form.__ecfRecaptchaWidgetId = widgetId;
+    });
+  }
+
   // --- Caricamento di un singolo form ---
   function loadForm(container) {
     var uuid = container.getAttribute('data-ecf-form');
@@ -56,7 +98,8 @@
       .then(function (html) {
         var shadow = container.shadowRoot || container.attachShadow({ mode: 'open' });
         shadow.innerHTML = html;
-        wireForm(shadow, uuid);
+        var form = wireForm(shadow, uuid);
+        if (form) renderRecaptchaIfPresent(shadow, form);
       })
       .catch(function (err) {
         container.textContent = 'Impossibile caricare il modulo.';
@@ -67,12 +110,14 @@
   // --- Collega gli handler al form dentro lo shadow root ---
   function wireForm(shadow, uuid) {
     var form = shadow.querySelector('form.ecf-form');
-    if (!form) return;
+    if (!form) return null;
 
     form.addEventListener('submit', function (event) {
       event.preventDefault();
       submitForm(shadow, form, uuid);
     });
+
+    return form;
   }
 
   function submitForm(shadow, form, uuid) {
@@ -82,6 +127,12 @@
     var messageBox = shadow.querySelector('.ecf-message');
     var data = collectValues(form);
     data.source_url = window.location.href;
+
+    // Lettura esplicita per widget id (non il nome DOM "g-recaptcha-response":
+    // con più form reCAPTCHA nella stessa pagina Google lo rinomina con suffissi).
+    if (form.__ecfRecaptchaWidgetId !== undefined && window.grecaptcha) {
+      data['g-recaptcha-response'] = window.grecaptcha.getResponse(form.__ecfRecaptchaWidgetId);
+    }
 
     if (button) button.disabled = true;
 
@@ -97,6 +148,11 @@
       })
       .then(function (result) {
         if (result.status >= 200 && result.status < 300 && result.body.success) {
+          var redirectUrl = result.body.data && result.body.data.redirect_url;
+          if (redirectUrl) {
+            window.location.href = redirectUrl;
+            return;
+          }
           form.reset();
           showMessage(messageBox, result.body.message || 'Inviato con successo.', 'is-success');
         } else if (result.status === 422 && result.body.errors) {
@@ -111,6 +167,10 @@
       })
       .finally(function () {
         if (button) button.disabled = false;
+        // I token reCAPTCHA v2 sono monouso: reset dopo ogni tentativo.
+        if (form.__ecfRecaptchaWidgetId !== undefined && window.grecaptcha) {
+          window.grecaptcha.reset(form.__ecfRecaptchaWidgetId);
+        }
       });
   }
 

@@ -55,8 +55,12 @@ if (!$schema->hasTable('forms')) {
         $t->string('name', 190);
         $t->text('description')->nullable();
         $t->string('success_message', 255)->nullable();
+        $t->string('redirect_url', 500)->nullable();
         $t->json('allowed_origins')->nullable();
         $t->json('style')->nullable();
+        $t->boolean('recaptcha_enabled')->default(false);
+        $t->string('recaptcha_site_key', 190)->nullable();
+        $t->string('recaptcha_secret_key', 190)->nullable();
         $t->enum('status', ['draft', 'active', 'disabled'])->default('draft');
         $t->timestamps();
     });
@@ -71,6 +75,24 @@ if ($schema->hasTable('forms') && !$schema->hasColumn('forms', 'style')) {
     echo "Aggiunta colonna: forms.style\n";
 }
 
+// --- forms.redirect_url (per installazioni preesistenti) ---
+if ($schema->hasTable('forms') && !$schema->hasColumn('forms', 'redirect_url')) {
+    $schema->table('forms', function (Blueprint $t) {
+        $t->string('redirect_url', 500)->nullable()->after('success_message');
+    });
+    echo "Aggiunta colonna: forms.redirect_url\n";
+}
+
+// --- forms.recaptcha_* (per installazioni preesistenti) ---
+if ($schema->hasTable('forms') && !$schema->hasColumn('forms', 'recaptcha_enabled')) {
+    $schema->table('forms', function (Blueprint $t) {
+        $t->boolean('recaptcha_enabled')->default(false)->after('style');
+        $t->string('recaptcha_site_key', 190)->nullable()->after('recaptcha_enabled');
+        $t->string('recaptcha_secret_key', 190)->nullable()->after('recaptcha_site_key');
+    });
+    echo "Aggiunte colonne: forms.recaptcha_enabled, recaptcha_site_key, recaptcha_secret_key\n";
+}
+
 // --- form_fields ---
 if (!$schema->hasTable('form_fields')) {
     $schema->create('form_fields', function (Blueprint $t) {
@@ -78,7 +100,7 @@ if (!$schema->hasTable('form_fields')) {
         $t->unsignedBigInteger('form_id');
         $t->string('key', 100);
         $t->string('label', 190);
-        $t->enum('type', ['text', 'email', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'hidden']);
+        $t->enum('type', ['text', 'email', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'hidden', 'privacy_consent']);
         $t->boolean('required')->default(false);
         $t->string('placeholder', 190)->nullable();
         $t->json('options')->nullable();
@@ -90,6 +112,15 @@ if (!$schema->hasTable('form_fields')) {
         $t->foreign('form_id')->references('id')->on('forms')->onDelete('cascade');
     });
     echo "Creata tabella: form_fields\n";
+}
+
+// --- form_fields.type: aggiunge 'privacy_consent' all'ENUM (per installazioni preesistenti) ---
+// MODIFY COLUMN con lo stesso set di valori è rieseguibile senza errori: nessun guard aggiuntivo necessario.
+if ($schema->hasTable('form_fields')) {
+    Capsule::statement(
+        "ALTER TABLE form_fields MODIFY COLUMN type "
+        . "ENUM('text','email','textarea','number','select','radio','checkbox','date','hidden','privacy_consent') NOT NULL"
+    );
 }
 
 // --- submissions ---

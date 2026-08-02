@@ -63,6 +63,7 @@ return (static function () {
         $group->get('/{id:[0-9]+}', [FormController::class, 'show']);
         $group->put('/{id:[0-9]+}', [FormController::class, 'update']);
         $group->delete('/{id:[0-9]+}', [FormController::class, 'destroy']);
+        $group->post('/{id:[0-9]+}/duplicate', [FormController::class, 'duplicate']);
         $group->get('/{id:[0-9]+}/submissions', [SubmissionController::class, 'index']);
         $group->get('/{id:[0-9]+}/submissions/export', [SubmissionController::class, 'export']);
     })->add(new AuthMiddleware())->add(new AdminCorsMiddleware());

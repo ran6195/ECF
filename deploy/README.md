@@ -87,6 +87,8 @@ Le variazioni di schema per DB già popolati stanno in `deploy/migrations/`. Da
 applicare **una volta** via phpMyAdmin, in ordine:
 
 - `2026-06-18-add-forms-style.sql` — aggiunge `forms.style` (stile/tema per form).
+- `2026-08-02-add-redirect-privacy-recaptcha.sql` — aggiunge `forms.redirect_url`,
+  `forms.recaptcha_enabled/site_key/secret_key` e il tipo campo `privacy_consent`.
 
 ## Cambiare sottocartella
 Modifica `BASE_PATH` in cima a `deploy/build.sh` e `APP_BASE_PATH` +

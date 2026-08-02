@@ -55,8 +55,12 @@ Snippet che l'admin copia/incolla sul sito:
 | uuid | CHAR(36) UNIQUE | identificatore pubblico usato nello snippet |
 | name | VARCHAR | nome interno |
 | description | TEXT NULL | |
-| success_message | VARCHAR NULL | messaggio post-invio |
-| allowed_origins | JSON NULL | whitelist domini; `NULL`/vuoto = aperto (test) |
+| success_message | VARCHAR NULL | messaggio post-invio (mostrato solo se `redirect_url` non è impostata) |
+| redirect_url | VARCHAR NULL | thank-you page: se impostata, redirect immediato dopo il submit invece del messaggio |
+| allowed_origins | JSON NULL | whitelist domini; `NULL`/vuoto = aperto (test). **Obbligatorio se `recaptcha_enabled`** |
+| style | JSON NULL | tema (colori, font, bottone submit) + CSS custom |
+| recaptcha_enabled | BOOLEAN | attiva Google reCAPTCHA v2 sul form |
+| recaptcha_site_key / recaptcha_secret_key | VARCHAR NULL | chiavi per-form (legate al dominio registrato su Google); la secret key non esce mai da `FormController`/`EmbedController` |
 | status | ENUM('draft','active','disabled') | |
 | created_at / updated_at | TIMESTAMP | |
 
@@ -67,11 +71,11 @@ Snippet che l'admin copia/incolla sul sito:
 | form_id | BIGINT FK | |
 | key | VARCHAR | nome macchina del campo (chiave nel payload) |
 | label | VARCHAR | |
-| type | ENUM | text, email, textarea, number, select, radio, checkbox, date, hidden |
-| required | TINYINT | |
+| type | ENUM | text, email, textarea, number, select, radio, checkbox, date, hidden, privacy_consent |
+| required | TINYINT | sempre `true` per `privacy_consent` (forzato server-side) |
 | placeholder | VARCHAR NULL | |
 | options | JSON NULL | per select/radio/checkbox |
-| validation | JSON NULL | `{min,max,regex,maxLength}` |
+| validation | JSON NULL | `{min,max,regex,maxLength}`; per `privacy_consent`: `{link_url,link_text}` |
 | sort_order | INT | ordinamento |
 
 ### `submissions` — dati raccolti (campi comuni + payload serializzato)
@@ -109,6 +113,7 @@ Snippet che l'admin copia/incolla sul sito:
 | `POST` | `/api/auth/login` | Login, ritorna token. |
 | `GET/POST` | `/api/forms` | Lista / crea form. |
 | `GET/PUT/DELETE` | `/api/forms/{id}` | Dettaglio (campi inclusi) / aggiorna / elimina. |
+| `POST` | `/api/forms/{id}/duplicate` | Clona form + campi in un nuovo form (sempre `status: draft`). |
 | `GET` | `/api/forms/{id}/submissions` | Lista submission (+ export CSV). |
 
 Il dettaglio form viaggia con i suoi `fields` annidati: l'admin invia l'intero
@@ -181,8 +186,15 @@ Lo script è servito come file statico con cache lunga e versioning via query st
 - **Domini:** in test `allowed_origins` aperto; struttura pronta per attivare la
   whitelist (check su `Origin`) per form. Il `uuid` identifica il form ma **non** è
   un segreto (è pubblico nello snippet).
-- **Anti-spam:** nessuno per ora (predisporre un campo honeypot nascosto è gratis e
-  lo si potrà attivare dopo senza cambiare l'architettura).
+- **Anti-spam:** due meccanismi, indipendenti e combinabili.
+  - **Honeypot** (sempre attivo): campo nascosto `_ecf_hp` iniettato in ogni form;
+    se valorizzato la submission è scartata silenziosamente (risposta 200 senza salvare).
+  - **Google reCAPTCHA v2** (opzionale, per-form): checkbox "Non sono un robot"
+    renderizzata esplicitamente dentro lo Shadow DOM (`RecaptchaVerifier` verifica
+    il token contro l'endpoint `siteverify` di Google, **fail-closed** su errori/timeout).
+    Le chiavi sono per-form perché la site key è legata al dominio registrato su
+    Google: attivare reCAPTCHA rende `allowed_origins` obbligatorio, per garantire
+    che il form sia effettivamente vincolato al dominio per cui la chiave è valida.
 - Validazione e sanificazione sempre lato server; escape dell'HTML in render per
   evitare XSS sui valori delle opzioni.
 

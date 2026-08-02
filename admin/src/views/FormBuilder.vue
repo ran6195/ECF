@@ -19,9 +19,13 @@ const form = reactive({
   name: '',
   description: '',
   success_message: '',
+  redirect_url: '',
   status: 'draft',
   style: defaultStyle(),
   fields: [],
+  recaptcha_enabled: false,
+  recaptcha_site_key: '',
+  recaptcha_secret_key: '',
 })
 
 // allowed_origins gestito come testo (una origine per riga).
@@ -72,9 +76,13 @@ function buildPayload() {
     name: form.name,
     description: form.description,
     success_message: form.success_message,
+    redirect_url: form.redirect_url || null,
     status: form.status,
     allowed_origins: origins.length ? origins : null,
     style: form.style,
+    recaptcha_enabled: !!form.recaptcha_enabled,
+    recaptcha_site_key: form.recaptcha_site_key || null,
+    recaptcha_secret_key: form.recaptcha_secret_key || null,
     fields: form.fields.map((f, i) => ({
       id: f.id || undefined,
       key: f.key,
@@ -161,9 +169,54 @@ onMounted(load)
             </div>
           </div>
           <div class="form-row">
-            <label class="field-label">Origini autorizzate (una per riga)</label>
+            <label class="field-label">Thank-you page (opzionale)</label>
+            <input v-model="form.redirect_url" placeholder="https://www.miosito.it/grazie" />
+            <p class="muted small">
+              Se impostata, l'utente viene reindirizzato subito dopo l'invio (il messaggio di successo sopra non verrà mostrato).
+            </p>
+            <p v-if="fieldErrors.redirect_url" class="alert error small" style="margin-top:6px">{{ fieldErrors.redirect_url[0] }}</p>
+          </div>
+          <div class="form-row">
+            <label class="field-label">
+              Origini autorizzate (una per riga)<span v-if="form.recaptcha_enabled" style="color:#dc2626" aria-hidden="true"> *</span>
+            </label>
             <textarea v-model="originsText" rows="2" placeholder="https://www.miosito.it&#10;Lascia vuoto per accettare da qualsiasi origine"></textarea>
             <p class="muted small">Vuoto = modalità aperta (qualsiasi dominio).</p>
+            <p v-if="form.recaptcha_enabled && !originsText.trim()" class="alert error small" style="margin-top:6px">
+              Obbligatorie perché reCAPTCHA è attivo: la site key è valida solo per i domini registrati su Google.
+            </p>
+            <p v-if="fieldErrors.allowed_origins" class="alert error small" style="margin-top:6px">{{ fieldErrors.allowed_origins[0] }}</p>
+          </div>
+        </div>
+
+        <!-- Anti-spam -->
+        <div class="card">
+          <h3 style="margin-top:0">Anti-spam (reCAPTCHA v2)</h3>
+          <label class="checkbox-row small">
+            <input type="checkbox" v-model="form.recaptcha_enabled" />
+            Attiva Google reCAPTCHA v2 (checkbox "Non sono un robot")
+          </label>
+          <div v-if="form.recaptcha_enabled" style="margin-top:12px">
+            <p class="muted small">
+              La site key è legata al dominio registrato nella
+              <a href="https://www.google.com/recaptcha/admin" target="_blank" rel="noopener noreferrer">console reCAPTCHA di Google</a>:
+              assicurati che coincida con le origini autorizzate sopra.
+            </p>
+            <div class="grid-2" style="margin-top:8px">
+              <div class="form-row">
+                <label class="field-label small">Site key</label>
+                <input v-model="form.recaptcha_site_key" placeholder="6Lc..." />
+                <p v-if="fieldErrors.recaptcha_site_key" class="alert error small" style="margin-top:6px">{{ fieldErrors.recaptcha_site_key[0] }}</p>
+              </div>
+              <div class="form-row">
+                <label class="field-label small">Secret key</label>
+                <input v-model="form.recaptcha_secret_key" type="password" placeholder="6Lc..." />
+                <p v-if="fieldErrors.recaptcha_secret_key" class="alert error small" style="margin-top:6px">{{ fieldErrors.recaptcha_secret_key[0] }}</p>
+              </div>
+            </div>
+            <p class="muted small" style="margin-top:8px">
+              Il widget non è visibile nell'anteprima qui a destra (fallirebbe comunque per dominio non registrato): verificalo su una pagina reale o su <code>test-embed</code>.
+            </p>
           </div>
         </div>
 
@@ -213,6 +266,8 @@ onMounted(load)
 <style scoped>
 .builder { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
 .builder-side { position: sticky; top: 20px; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.checkbox-row input { margin: 0; }
 @media (max-width: 900px) {
   .builder { grid-template-columns: 1fr; }
 }

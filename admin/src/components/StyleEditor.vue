@@ -38,8 +38,24 @@ const maxWidthPx = computed({
   },
 })
 
+// Colore di sfondo del bottone: se non impostato esplicitamente, segue il colore
+// primario (comportamento di sempre). Il toggle attiva/disattiva l'override.
+const hasCustomSubmitBg = computed({
+  get() {
+    return !!props.style.theme.submitBg
+  },
+  set(v) {
+    if (v) {
+      props.style.theme.submitBg = props.style.theme.primary
+    } else {
+      delete props.style.theme.submitBg
+    }
+  },
+})
+
 function resetTheme() {
   Object.assign(props.style.theme, { ...DEFAULT_THEME })
+  delete props.style.theme.submitBg
 }
 </script>
 
@@ -112,6 +128,24 @@ function resetTheme() {
       <p class="muted small" style="margin:4px 0 0">
         Visibile quando il form non è a piena larghezza.
       </p>
+    </div>
+
+    <div class="form-row" style="margin-top:14px">
+      <label class="field-label small">Bottone di invio</label>
+      <input
+        type="text"
+        v-model="style.theme.submitLabel"
+        placeholder="Invia"
+        maxlength="60"
+      />
+      <label class="checkbox-row small" style="margin-top:8px">
+        <input type="checkbox" v-model="hasCustomSubmitBg" />
+        Usa un colore diverso dal primario per il bottone
+      </label>
+      <div v-if="hasCustomSubmitBg" class="color-row" style="margin-top:8px">
+        <input type="color" v-model="style.theme.submitBg" class="color-swatch" />
+        <input type="text" v-model="style.theme.submitBg" class="color-hex" />
+      </div>
     </div>
 
     <div class="form-row" style="margin-top:14px">

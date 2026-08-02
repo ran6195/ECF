@@ -15,7 +15,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 
 final class FormController
 {
-    private const FIELD_TYPES = ['text', 'email', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'hidden'];
+    private const FIELD_TYPES = ['text', 'email', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'hidden', 'privacy_consent'];
     private const STATUSES = ['draft', 'active', 'disabled'];
 
     /** GET /api/forms → lista con conteggio submission. */
@@ -64,8 +64,12 @@ final class FormController
             'name' => trim((string) $body['name']),
             'description' => $this->nullableStr($body['description'] ?? null),
             'success_message' => $this->nullableStr($body['success_message'] ?? null),
+            'redirect_url' => $this->normalizeUrl($body['redirect_url'] ?? null),
             'allowed_origins' => $this->normalizeOrigins($body['allowed_origins'] ?? null),
             'style' => $this->normalizeStyle($body['style'] ?? null),
+            'recaptcha_enabled' => !empty($body['recaptcha_enabled']),
+            'recaptcha_site_key' => $this->nullableStr($body['recaptcha_site_key'] ?? null),
+            'recaptcha_secret_key' => $this->nullableStr($body['recaptcha_secret_key'] ?? null),
             'status' => $body['status'] ?? 'draft',
         ]);
         $form->save();
@@ -94,8 +98,12 @@ final class FormController
             'name' => trim((string) $body['name']),
             'description' => $this->nullableStr($body['description'] ?? null),
             'success_message' => $this->nullableStr($body['success_message'] ?? null),
+            'redirect_url' => $this->normalizeUrl($body['redirect_url'] ?? null),
             'allowed_origins' => $this->normalizeOrigins($body['allowed_origins'] ?? null),
             'style' => $this->normalizeStyle($body['style'] ?? null),
+            'recaptcha_enabled' => !empty($body['recaptcha_enabled']),
+            'recaptcha_site_key' => $this->nullableStr($body['recaptcha_site_key'] ?? null),
+            'recaptcha_secret_key' => $this->nullableStr($body['recaptcha_secret_key'] ?? null),
             'status' => $body['status'] ?? $form->status,
         ]);
         $form->save();
@@ -119,6 +127,32 @@ final class FormController
     }
 
     /**
+     * POST /api/forms/{id}/duplicate → clona form + fields. Il duplicato nasce
+     * sempre in stato "draft" con un nuovo uuid, indipendentemente dall'originale.
+     */
+    public function duplicate(Request $request, Response7 $response, array $args): Response7
+    {
+        $original = Form::with('fields')->find((int) $args['id']);
+        if ($original === null) {
+            return Response::error($response, 'Form non trovato.', 404);
+        }
+
+        $copy = $original->replicate();
+        $copy->uuid = $this->uuid();
+        $copy->name = $original->name . ' (copia)';
+        $copy->status = 'draft';
+        $copy->save();
+
+        foreach ($original->fields as $field) {
+            $clone = $field->replicate();
+            $clone->form_id = $copy->id;
+            $clone->save();
+        }
+
+        return Response::success($response, $this->serialize($copy->fresh('fields')), 'Form duplicato.', 201);
+    }
+
+    /**
      * POST /api/forms/preview → rende l'HTML del form (senza salvarlo) usando
      * lo stesso FormRenderer della produzione. Serve all'anteprima live dell'admin.
      */
@@ -136,11 +170,12 @@ final class FormController
         // Costruisce i campi in memoria (non tocca il DB).
         $fields = new Collection();
         foreach (array_values((array) ($body['fields'] ?? [])) as $i => $raw) {
+            $type = in_array($raw['type'] ?? '', self::FIELD_TYPES, true) ? $raw['type'] : 'text';
             $fields->push(new FormField([
                 'key' => $this->slugKey((string) ($raw['key'] ?? ''), $i),
                 'label' => trim((string) ($raw['label'] ?? '')),
-                'type' => in_array($raw['type'] ?? '', self::FIELD_TYPES, true) ? $raw['type'] : 'text',
-                'required' => !empty($raw['required']),
+                'type' => $type,
+                'required' => $type === 'privacy_consent' ? true : !empty($raw['required']),
                 'placeholder' => $this->nullableStr($raw['placeholder'] ?? null),
                 'options' => $this->normalizeOptions($raw['options'] ?? null),
                 'validation' => $this->normalizeValidation($raw['validation'] ?? null),
@@ -180,11 +215,13 @@ final class FormController
             }
 
             foreach (array_values($incoming) as $index => $raw) {
+                $type = in_array($raw['type'] ?? '', self::FIELD_TYPES, true) ? $raw['type'] : 'text';
                 $data = [
                     'key' => $this->slugKey((string) ($raw['key'] ?? ''), $index),
                     'label' => trim((string) ($raw['label'] ?? '')),
-                    'type' => in_array($raw['type'] ?? '', self::FIELD_TYPES, true) ? $raw['type'] : 'text',
-                    'required' => !empty($raw['required']),
+                    'type' => $type,
+                    // La checkbox privacy è sempre obbligatoria: non ci si fida del client.
+                    'required' => $type === 'privacy_consent' ? true : !empty($raw['required']),
                     'placeholder' => $this->nullableStr($raw['placeholder'] ?? null),
                     'options' => $this->normalizeOptions($raw['options'] ?? null),
                     'validation' => $this->normalizeValidation($raw['validation'] ?? null),
@@ -210,8 +247,12 @@ final class FormController
             'name' => $form->name,
             'description' => $form->description,
             'success_message' => $form->success_message,
+            'redirect_url' => $form->redirect_url,
             'allowed_origins' => $form->allowed_origins,
             'style' => $form->style,
+            'recaptcha_enabled' => $form->recaptcha_enabled,
+            'recaptcha_site_key' => $form->recaptcha_site_key,
+            'recaptcha_secret_key' => $form->recaptcha_secret_key,
             'status' => $form->status,
             'fields' => $form->fields->map(fn (FormField $f) => [
                 'id' => $f->id,
@@ -241,6 +282,25 @@ final class FormController
             $errors['status'][] = 'Stato non valido.';
         }
 
+        $redirectUrl = trim((string) ($body['redirect_url'] ?? ''));
+        if ($redirectUrl !== '' && $this->normalizeUrl($redirectUrl) === null) {
+            $errors['redirect_url'][] = 'URL non valida (deve iniziare con http:// o https://).';
+        }
+
+        // reCAPTCHA: le chiavi sono legate al dominio registrato su Google, quindi
+        // se attivo è necessario sapere su quali origini il form verrà usato.
+        if (!empty($body['recaptcha_enabled'])) {
+            if (trim((string) ($body['recaptcha_site_key'] ?? '')) === '') {
+                $errors['recaptcha_site_key'][] = 'Site key obbligatoria quando reCAPTCHA è attivo.';
+            }
+            if (trim((string) ($body['recaptcha_secret_key'] ?? '')) === '') {
+                $errors['recaptcha_secret_key'][] = 'Secret key obbligatoria quando reCAPTCHA è attivo.';
+            }
+            if ($this->normalizeOrigins($body['allowed_origins'] ?? null) === null) {
+                $errors['allowed_origins'][] = 'Origini autorizzate obbligatorie quando reCAPTCHA è attivo (la site key è valida solo per i domini registrati).';
+            }
+        }
+
         $keys = [];
         foreach ((array) ($body['fields'] ?? []) as $i => $f) {
             $label = trim((string) ($f['label'] ?? ''));
@@ -252,6 +312,13 @@ final class FormController
                 $errors["fields.$i.key"][] = "Chiave duplicata: $key";
             }
             $keys[] = $key;
+
+            if (($f['type'] ?? '') === 'privacy_consent') {
+                $linkUrl = (array) ($f['validation'] ?? []);
+                if ($this->normalizeUrl($linkUrl['link_url'] ?? null) === null) {
+                    $errors["fields.$i.link_url"][] = 'Il link alla pagina privacy è obbligatorio e deve essere una URL valida.';
+                }
+            }
         }
 
         return $errors;
@@ -281,7 +348,9 @@ final class FormController
             return null;
         }
 
-        $allowedTokens = array_keys(Form::THEME_DEFAULTS);
+        // submitBg non è in THEME_DEFAULTS (nessun default fisso, vedi Form::theme()):
+        // va aggiunto esplicitamente alla whitelist, non tramite array_keys().
+        $allowedTokens = [...array_keys(Form::THEME_DEFAULTS), 'submitBg'];
         $theme = [];
         $rawTheme = is_array($value['theme'] ?? null) ? $value['theme'] : [];
         foreach ($allowedTokens as $token) {
@@ -344,11 +413,18 @@ final class FormController
             return null;
         }
 
-        $allowed = ['min', 'max', 'minLength', 'maxLength', 'regex'];
+        $allowed = ['min', 'max', 'minLength', 'maxLength', 'regex', 'link_url', 'link_text'];
         $out = [];
         foreach ($allowed as $k) {
             if (isset($value[$k]) && $value[$k] !== '' && $value[$k] !== null) {
-                $out[$k] = in_array($k, ['regex'], true) ? (string) $value[$k] : $value[$k];
+                if ($k === 'link_url') {
+                    $url = $this->normalizeUrl($value[$k]);
+                    if ($url !== null) {
+                        $out[$k] = $url;
+                    }
+                    continue;
+                }
+                $out[$k] = in_array($k, ['regex', 'link_text'], true) ? (string) $value[$k] : $value[$k];
             }
         }
 
@@ -369,6 +445,31 @@ final class FormController
         $value = is_string($value) ? trim($value) : null;
 
         return $value === '' ? null : $value;
+    }
+
+    /**
+     * Valida un URL assoluto http/https. Ritorna null se vuoto o non valido.
+     * Lo scheme è controllato esplicitamente: embed.js farà `window.location.href`
+     * con questo valore senza altri controlli, quindi uno scheme come "javascript:"
+     * diventerebbe XSS eseguito sul sito ospite ad ogni submit riuscito.
+     */
+    private function normalizeUrl(mixed $value): ?string
+    {
+        $url = is_string($value) ? trim($value) : '';
+        if ($url === '') {
+            return null;
+        }
+
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return null;
+        }
+
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            return null;
+        }
+
+        return $url;
     }
 
     private function uuid(): string

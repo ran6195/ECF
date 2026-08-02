@@ -26,12 +26,15 @@ final class FormRenderer
             $fieldsHtml .= $this->renderField($field);
         }
 
+        $theme = $form->theme();
         $honeypot = $this->renderHoneypot();
-        $style = $this->style($form);
+        $recaptcha = $this->renderRecaptcha($form);
+        $style = $this->style($form, $theme);
         $title = $this->e($form->name);
         $description = $form->description
             ? '<p class="ecf-desc">' . $this->e($form->description) . '</p>'
             : '';
+        $submitLabel = $this->e($theme['submitLabel'] ?: 'Invia');
 
         // data-ecf-uuid permette a embed.js di sapere a quale form appartiene.
         return <<<HTML
@@ -44,8 +47,9 @@ final class FormRenderer
         {$fieldsHtml}
             </div>
             {$honeypot}
+            {$recaptcha}
             <div class="ecf-actions">
-              <button type="submit" class="ecf-submit">Invia</button>
+              <button type="submit" class="ecf-submit">{$submitLabel}</button>
             </div>
             <div class="ecf-message" role="status" aria-live="polite" hidden></div>
           </form>
@@ -55,6 +59,13 @@ final class FormRenderer
 
     private function renderField(FormField $field): string
     {
+        // La checkbox privacy ha un markup dedicato (label composta da testo + link):
+        // il wrapper generico sotto produrrebbe un <label> esterno duplicato/non
+        // valido attorno al <label><input></label> interno.
+        if ($field->type === 'privacy_consent') {
+            return $this->renderPrivacyConsent($field) . "\n";
+        }
+
         $id = 'ecf-' . $this->e($field->key);
         $label = $this->e($field->label);
         $required = $field->required ? ' <span class="ecf-req" aria-hidden="true">*</span>' : '';
@@ -204,6 +215,44 @@ final class FormRenderer
         );
     }
 
+    private function renderPrivacyConsent(FormField $field): string
+    {
+        $id = 'ecf-' . $this->e($field->key);
+        $label = $this->e($field->label);
+        $rules = $field->validation ?? [];
+        $linkUrl = $this->e((string) ($rules['link_url'] ?? ''));
+        $linkText = $this->e((string) ($rules['link_text'] ?? 'informativa sulla privacy'));
+
+        return sprintf(
+            '<div class="ecf-field ecf-field-privacy_consent"><label class="ecf-option" for="%s">'
+            . '<input type="checkbox" id="%s" name="%s" value="1" required> '
+            . '<span>%s <a href="%s" target="_blank" rel="noopener noreferrer">%s</a></span></label></div>',
+            $id,
+            $id,
+            $this->e($field->key),
+            $label,
+            $linkUrl,
+            $linkText
+        );
+    }
+
+    /**
+     * Div contenitore per il widget reCAPTCHA v2, renderizzato esplicitamente da
+     * embed.js (il rendering automatico di Google non troverebbe l'elemento dentro
+     * lo Shadow DOM). Legge solo la site key, mai la secret key (server-side only).
+     */
+    private function renderRecaptcha(Form $form): string
+    {
+        if (!$form->recaptchaActive()) {
+            return '';
+        }
+
+        return sprintf(
+            '<div class="ecf-recaptcha" data-sitekey="%s"></div>',
+            $this->e((string) $form->recaptcha_site_key)
+        );
+    }
+
     private function renderHoneypot(): string
     {
         // Nascosto via CSS e fuori dal flusso; aria-hidden e tabindex per gli umani.
@@ -258,9 +307,9 @@ final class FormRenderer
         return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
-    private function style(Form $form): string
+    private function style(Form $form, array $theme): string
     {
-        $vars = $this->themeVars($form->theme());
+        $vars = $this->themeVars($theme);
         $custom = $this->sanitizeCustomCss($form->customCss());
         $customBlock = $custom !== '' ? "\n          /* CSS personalizzato del form */\n          {$custom}" : '';
 
@@ -287,10 +336,11 @@ final class FormRenderer
           .ecf-option { display: flex; align-items: center; gap: 8px; font-weight: 400; font-size: .95rem; cursor: pointer; color: var(--ecf-text); }
           .ecf-option input { margin: 0; accent-color: var(--ecf-primary); }
           .ecf-actions { margin-top: 20px; }
-          .ecf-submit { appearance: none; border: 0; cursor: pointer; background: var(--ecf-primary); color: var(--ecf-btn-text); font-size: .95rem; font-weight: 600; padding: 11px 22px; border-radius: var(--ecf-radius); transition: background .15s; }
-          .ecf-submit:hover { background: var(--ecf-primary-hover); }
+          .ecf-submit { appearance: none; border: 0; cursor: pointer; background: var(--ecf-submit-bg); color: var(--ecf-btn-text); font-size: .95rem; font-weight: 600; padding: 11px 22px; border-radius: var(--ecf-radius); transition: filter .15s; }
+          .ecf-submit:hover { filter: brightness(0.92); }
           .ecf-submit:disabled { opacity: .6; cursor: default; }
           .ecf-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+          .ecf-recaptcha { margin-top: 16px; }
           .ecf-message { margin-top: 16px; padding: 12px 14px; border-radius: var(--ecf-radius); font-size: .9rem; }
           .ecf-message[hidden] { display: none; }
           .ecf-message.is-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
@@ -315,6 +365,7 @@ final class FormRenderer
             '--ecf-radius' => $theme['radius'],
             '--ecf-font' => $theme['fontFamily'],
             '--ecf-btn-text' => $theme['buttonText'],
+            '--ecf-submit-bg' => $theme['submitBg'] ?? $theme['primary'],
             '--ecf-max-width' => $theme['maxWidth'],
             '--ecf-form-margin' => $this->alignToMargin($theme['align'] ?? 'center'),
         ];

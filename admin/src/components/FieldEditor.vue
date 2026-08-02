@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 
 // Il field è un oggetto reattivo del parent: lo mutiamo direttamente.
 const props = defineProps({
@@ -18,11 +18,19 @@ const TYPES = [
   { value: 'checkbox', label: 'Caselle (checkbox)' },
   { value: 'date', label: 'Data' },
   { value: 'hidden', label: 'Nascosto' },
+  { value: 'privacy_consent', label: 'Consenso privacy (obbligatorio)' },
 ]
 
 const hasOptions = computed(() => ['select', 'radio', 'checkbox'].includes(props.field.type))
 const hasValidation = computed(() => ['text', 'email', 'textarea', 'number'].includes(props.field.type))
 const isNumber = computed(() => props.field.type === 'number')
+const isPrivacyConsent = computed(() => props.field.type === 'privacy_consent')
+
+// La checkbox privacy è sempre obbligatoria: forza il flag in UI (l'autorità
+// resta comunque il backend, che lo forza a prescindere da cosa arriva dal client).
+watch(() => props.field.type, (type) => {
+  if (type === 'privacy_consent') props.field.required = true
+})
 
 function ensureOptions() {
   if (!Array.isArray(props.field.options)) props.field.options = []
@@ -86,9 +94,25 @@ function autoKey() {
     </div>
 
     <div class="form-row">
-      <label class="flex" style="font-weight:600;font-size:.85rem">
+      <label v-if="!isPrivacyConsent" class="flex" style="font-weight:600;font-size:.85rem">
         <input type="checkbox" v-model="field.required" style="width:auto" /> Obbligatorio
       </label>
+      <span v-else class="muted small">Sempre obbligatoria.</span>
+    </div>
+
+    <!-- Link alla pagina privacy -->
+    <div v-if="isPrivacyConsent" class="sub-section">
+      <span class="field-label">Link informativa privacy</span>
+      <div class="grid-2">
+        <div>
+          <label class="field-label small">URL pagina privacy</label>
+          <input :value="field.validation?.link_url" @input="ensureValidation(); field.validation.link_url = $event.target.value" placeholder="https://www.miosito.it/privacy" />
+        </div>
+        <div>
+          <label class="field-label small">Testo del link</label>
+          <input :value="field.validation?.link_text" @input="ensureValidation(); field.validation.link_text = $event.target.value" placeholder="informativa sulla privacy" />
+        </div>
+      </div>
     </div>
 
     <!-- Opzioni per select/radio/checkbox -->

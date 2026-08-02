@@ -8,6 +8,7 @@ use Ecf\Models\Form;
 use Ecf\Models\Submission;
 use Ecf\Services\FormRenderer;
 use Ecf\Services\FormValidator;
+use Ecf\Services\RecaptchaVerifier;
 use Ecf\Support\Response;
 use Psr\Http\Message\ResponseInterface as Response7;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -54,7 +55,23 @@ final class EmbedController
         // Honeypot valorizzato → silent drop: rispondo ok senza salvare.
         $honeypot = $input[FormRenderer::HONEYPOT_KEY] ?? '';
         if (is_string($honeypot) && trim($honeypot) !== '') {
-            return Response::success($response, null, $form->success_message ?: 'Grazie!');
+            return Response::success(
+                $response,
+                ['redirect_url' => $form->redirect_url ?: null],
+                $form->success_message ?: 'Grazie!'
+            );
+        }
+
+        if ($form->recaptchaActive()) {
+            $token = (string) ($input['g-recaptcha-response'] ?? '');
+            $ok = (new RecaptchaVerifier())->verify($form->recaptcha_secret_key, $token, $this->clientIp($request));
+            if (!$ok) {
+                return Response::validationError(
+                    $response,
+                    ['recaptcha' => ['Verifica non superata.']],
+                    'Verifica reCAPTCHA non superata. Riprova.'
+                );
+            }
         }
 
         $validator = new FormValidator();
@@ -73,7 +90,7 @@ final class EmbedController
 
         return Response::success(
             $response,
-            ['id' => $submission->id],
+            ['id' => $submission->id, 'redirect_url' => $form->redirect_url ?: null],
             $form->success_message ?: 'Grazie! Il modulo è stato inviato.'
         );
     }

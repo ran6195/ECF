@@ -10,6 +10,7 @@ export const DEFAULT_THEME = {
   buttonText: '#ffffff',
   maxWidth: '720px',
   align: 'center',
+  submitLabel: 'Invia',
 }
 
 // Posizione del form nel contenitore (effetto visibile quando non è a piena larghezza).
@@ -32,7 +33,7 @@ export const FONT_OPTIONS = [
 export const COLOR_FIELDS = [
   { key: 'primary', label: 'Colore primario' },
   { key: 'primaryHover', label: 'Primario (hover)' },
-  { key: 'buttonText', label: 'Testo del bottone' },
+  { key: 'buttonText', label: 'Colore testo bottone' },
   { key: 'text', label: 'Testo' },
   { key: 'background', label: 'Sfondo del form' },
   { key: 'border', label: 'Bordi' },

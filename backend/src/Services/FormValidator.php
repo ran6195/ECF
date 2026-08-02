@@ -54,8 +54,9 @@ final class FormValidator
     {
         $key = $field->key;
 
-        // I checkbox possono arrivare come array (selezione multipla) o bool.
-        if ($field->type === 'checkbox') {
+        // I checkbox (e la checkbox privacy, sempre obbligatoria) possono arrivare
+        // come array (selezione multipla) o bool.
+        if (in_array($field->type, ['checkbox', 'privacy_consent'], true)) {
             $this->validateCheckbox($field, $raw);
             return;
         }
@@ -122,7 +123,10 @@ final class FormValidator
         }
 
         if ($field->required && $values === []) {
-            $this->addError($field->key, sprintf('Devi selezionare "%s".', $field->label));
+            $message = $field->type === 'privacy_consent'
+                ? 'Devi accettare l\'informativa privacy per continuare.'
+                : sprintf('Devi selezionare "%s".', $field->label);
+            $this->addError($field->key, $message);
             return;
         }
 

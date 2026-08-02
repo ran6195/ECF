@@ -13,7 +13,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $name
  * @property string|null $description
  * @property string|null $success_message
+ * @property string|null $redirect_url
  * @property array|null $allowed_origins
+ * @property bool $recaptcha_enabled
+ * @property string|null $recaptcha_site_key
+ * @property string|null $recaptcha_secret_key
  * @property string $status
  */
 class Form extends Model
@@ -25,14 +29,19 @@ class Form extends Model
         'name',
         'description',
         'success_message',
+        'redirect_url',
         'allowed_origins',
         'style',
+        'recaptcha_enabled',
+        'recaptcha_site_key',
+        'recaptcha_secret_key',
         'status',
     ];
 
     protected $casts = [
         'allowed_origins' => 'array',
         'style' => 'array',
+        'recaptcha_enabled' => 'boolean',
     ];
 
     /**
@@ -50,10 +59,18 @@ class Form extends Model
         'buttonText' => '#ffffff',
         'maxWidth' => '720px',
         'align' => 'center',
+        'submitLabel' => 'Invia',
     ];
 
     /**
      * Tema risolto: default + override del form.
+     *
+     * `submitBg` non ha un default fisso in THEME_DEFAULTS: se il form non lo
+     * imposta esplicitamente, il bottone segue `primary` (comportamento identico
+     * a prima dell'introduzione del colore custom del bottone). Un default fisso
+     * "congelerebbe" silenziosamente il colore del bottone al primo salvataggio
+     * di qualunque form esistente, sganciandolo dal `primary` reale in uso.
+     *
      * @return array<string, string>
      */
     public function theme(): array
@@ -61,10 +78,16 @@ class Form extends Model
         $style = $this->style ?? [];
         $theme = is_array($style['theme'] ?? null) ? $style['theme'] : [];
 
-        return array_merge(self::THEME_DEFAULTS, array_filter(
+        $resolved = array_merge(self::THEME_DEFAULTS, array_filter(
             $theme,
             fn ($v) => is_string($v) && $v !== ''
         ));
+
+        $resolved['submitBg'] = (is_string($theme['submitBg'] ?? null) && $theme['submitBg'] !== '')
+            ? $theme['submitBg']
+            : $resolved['primary'];
+
+        return $resolved;
     }
 
     public function customCss(): string
@@ -95,5 +118,15 @@ class Form extends Model
     public function isOpenOrigin(): bool
     {
         return empty($this->allowed_origins);
+    }
+
+    /**
+     * True se reCAPTCHA è attivo e configurato correttamente (chiavi presenti).
+     */
+    public function recaptchaActive(): bool
+    {
+        return (bool) $this->recaptcha_enabled
+            && is_string($this->recaptcha_site_key) && $this->recaptcha_site_key !== ''
+            && is_string($this->recaptcha_secret_key) && $this->recaptcha_secret_key !== '';
     }
 }

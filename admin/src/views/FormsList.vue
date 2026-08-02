@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { api } from '../api/client'
 import SnippetBox from '../components/SnippetBox.vue'
 
+const router = useRouter()
 const forms = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -26,6 +28,15 @@ async function remove(form) {
   try {
     await api.del(`/api/forms/${form.id}`)
     await load()
+  } catch (e) {
+    error.value = e.message
+  }
+}
+
+async function duplicate(form) {
+  try {
+    const res = await api.post(`/api/forms/${form.id}/duplicate`)
+    router.push({ name: 'form-edit', params: { id: res.data.id } })
   } catch (e) {
     error.value = e.message
   }
@@ -67,6 +78,7 @@ onMounted(load)
             Submission
           </router-link>
           <router-link class="btn small" :to="{ name: 'form-edit', params: { id: form.id } }">Modifica</router-link>
+          <button class="btn small secondary" @click="duplicate(form)">Duplica</button>
           <button class="btn small danger" @click="remove(form)">Elimina</button>
         </div>
       </div>
