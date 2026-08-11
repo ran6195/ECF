@@ -30,6 +30,7 @@ const hasValidation = computed(() => ['text', 'email', 'textarea', 'number'].inc
 const isNumber = computed(() => props.field.type === 'number')
 const isPrivacyConsent = computed(() => props.field.type === 'privacy_consent')
 const isTimeSlot = computed(() => props.field.type === 'time_slot')
+const isDate = computed(() => props.field.type === 'date')
 
 // La checkbox privacy è sempre obbligatoria: forza il flag in UI (l'autorità
 // resta comunque il backend, che lo forza a prescindere da cosa arriva dal client).
@@ -147,6 +148,22 @@ function autoKey() {
           <option v-for="s in TIME_SLOT_STEPS" :key="s" :value="s">{{ s }} minuti</option>
         </select>
       </div>
+    </div>
+
+    <!-- Vincoli per il tipo data: le date escluse non sono selezionabili -->
+    <div v-if="isDate" class="sub-section">
+      <span class="field-label">Vincoli data</span>
+      <label class="flex" style="font-weight:400;font-size:.9rem;margin-top:8px">
+        <input type="checkbox" :checked="!!field.validation?.exclude_past" @change="ensureValidation(); field.validation.exclude_past = $event.target.checked" style="width:auto" />
+        Escludi date passate
+      </label>
+      <label class="flex" style="font-weight:400;font-size:.9rem;margin-top:6px">
+        <input type="checkbox" :checked="!!field.validation?.exclude_weekends" @change="ensureValidation(); field.validation.exclude_weekends = $event.target.checked" style="width:auto" />
+        Escludi sabato e domenica
+      </label>
+      <p v-if="field.validation?.exclude_weekends" class="muted small" style="margin-top:8px">
+        Il blocco del weekend non è visibile nell'anteprima qui a destra (è statica, non esegue lo script del form): verificalo su una pagina reale o su <code>test-embed</code>.
+      </p>
     </div>
 
     <!-- Opzioni per select/radio/checkbox -->

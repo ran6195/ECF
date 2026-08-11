@@ -115,4 +115,43 @@ final class FormValidatorTest extends TestCase
         $this->assertTrue($validator->validate($form, ['orario' => '08:00'])); // default 08:00-17:00 step 30
         $this->assertFalse($validator->validate($form, ['orario' => '07:30']));
     }
+
+    public function testDateExcludesPastWhenConfigured(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'appuntamento', 'label' => 'Appuntamento', 'type' => 'date', 'validation' => ['exclude_past' => true]],
+        ]);
+
+        $validator = new FormValidator();
+        $yesterday = (new \DateTime('yesterday'))->format('Y-m-d');
+        $today = (new \DateTime('today'))->format('Y-m-d');
+
+        $this->assertFalse($validator->validate($form, ['appuntamento' => $yesterday]));
+        $this->assertTrue($validator->validate($form, ['appuntamento' => $today]));
+    }
+
+    public function testDateExcludesWeekendsWhenConfigured(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'appuntamento', 'label' => 'Appuntamento', 'type' => 'date', 'validation' => ['exclude_weekends' => true]],
+        ]);
+
+        $validator = new FormValidator();
+        $saturday = (new \DateTime('next saturday'))->format('Y-m-d');
+        $monday = (new \DateTime('next monday'))->format('Y-m-d');
+
+        $this->assertFalse($validator->validate($form, ['appuntamento' => $saturday]));
+        $this->assertTrue($validator->validate($form, ['appuntamento' => $monday]));
+    }
+
+    public function testDateWithoutConstraintsAcceptsAnyValidDate(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'appuntamento', 'label' => 'Appuntamento', 'type' => 'date'],
+        ]);
+
+        $validator = new FormValidator();
+        $saturday = (new \DateTime('next saturday'))->format('Y-m-d');
+        $this->assertTrue($validator->validate($form, ['appuntamento' => $saturday]));
+    }
 }

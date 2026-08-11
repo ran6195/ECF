@@ -157,4 +157,31 @@ final class FormRendererTest extends TestCase
         $this->assertStringContainsString('<option value="08:00">08:00</option>', $html);
         $this->assertStringContainsString('<option value="17:00">17:00</option>', $html);
     }
+
+    public function testDateFieldRendersConstraintAttributesWhenConfigured(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'appuntamento', 'label' => 'Appuntamento', 'type' => 'date', 'validation' => [
+                'exclude_past' => true, 'exclude_weekends' => true,
+            ]],
+        ]);
+
+        $html = (new FormRenderer())->render($form);
+        $today = date('Y-m-d');
+
+        $this->assertStringContainsString('min="' . $today . '"', $html);
+        $this->assertStringContainsString('data-ecf-exclude-weekends="1"', $html);
+    }
+
+    public function testDateFieldWithoutConstraintsHasNoExtraAttributes(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'appuntamento', 'label' => 'Appuntamento', 'type' => 'date'],
+        ]);
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringNotContainsString(' min=', $html);
+        $this->assertStringNotContainsString('data-ecf-exclude-weekends', $html);
+    }
 }

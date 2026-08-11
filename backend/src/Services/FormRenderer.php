@@ -118,16 +118,40 @@ final class FormRenderer
         $type = in_array($field->type, ['text', 'email', 'number', 'date'], true) ? $field->type : 'text';
         $placeholder = $field->placeholder ? ' placeholder="' . $this->e($field->placeholder) . '"' : '';
         $attrs = $this->validationAttrs($field);
+        $dateAttrs = $type === 'date' ? $this->dateConstraintAttrs($field) : '';
 
         return sprintf(
-            '<input class="ecf-input" type="%s" id="%s" name="%s"%s%s%s>',
+            '<input class="ecf-input" type="%s" id="%s" name="%s"%s%s%s%s>',
             $this->e($type),
             $id,
             $this->e($field->key),
             $placeholder,
             $requiredAttr,
-            $attrs
+            $attrs,
+            $dateAttrs
         );
+    }
+
+    /**
+     * "Escludi date passate" usa l'attributo nativo `min` (il picker del browser
+     * disabilita/ingrigisce le date precedenti). "Escludi weekend" non ha un
+     * equivalente HTML nativo: il data-attribute viene letto da embed.js, che
+     * annulla lato client la selezione di sabato/domenica (vedi wireDateConstraints).
+     * In entrambi i casi FormValidator resta l'autorità che rifiuta il valore.
+     */
+    private function dateConstraintAttrs(FormField $field): string
+    {
+        $rules = $field->validation ?? [];
+        $attrs = '';
+
+        if (!empty($rules['exclude_past'])) {
+            $attrs .= ' min="' . date('Y-m-d') . '"';
+        }
+        if (!empty($rules['exclude_weekends'])) {
+            $attrs .= ' data-ecf-exclude-weekends="1"';
+        }
+
+        return $attrs;
     }
 
     private function textarea(FormField $field, string $id, string $requiredAttr): string

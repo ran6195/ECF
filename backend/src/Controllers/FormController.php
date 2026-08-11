@@ -413,9 +413,16 @@ final class FormController
             return null;
         }
 
-        $allowed = ['min', 'max', 'minLength', 'maxLength', 'regex', 'link_url', 'link_text', 'start_time', 'end_time', 'step'];
+        $allowed = ['min', 'max', 'minLength', 'maxLength', 'regex', 'link_url', 'link_text', 'start_time', 'end_time', 'step', 'exclude_past', 'exclude_weekends'];
+        $boolKeys = ['exclude_past', 'exclude_weekends'];
         $out = [];
         foreach ($allowed as $k) {
+            if (in_array($k, $boolKeys, true)) {
+                if (!empty($value[$k])) {
+                    $out[$k] = true;
+                }
+                continue;
+            }
             if (isset($value[$k]) && $value[$k] !== '' && $value[$k] !== null) {
                 if ($k === 'link_url') {
                     $url = $this->normalizeUrl($value[$k]);

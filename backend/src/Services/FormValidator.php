@@ -95,6 +95,8 @@ final class FormValidator
             case 'date':
                 if (!$this->isValidDate($value)) {
                     $this->addError($key, sprintf('"%s" non è una data valida (YYYY-MM-DD).', $field->label));
+                } else {
+                    $this->validateDateConstraints($field, $value);
                 }
                 break;
 
@@ -197,6 +199,26 @@ final class FormValidator
         }
 
         return false;
+    }
+
+    private function validateDateConstraints(FormField $field, string $value): void
+    {
+        $rules = $field->validation ?? [];
+        if (empty($rules['exclude_past']) && empty($rules['exclude_weekends'])) {
+            return;
+        }
+
+        $date = \DateTime::createFromFormat('Y-m-d', $value);
+        $date->setTime(0, 0, 0);
+
+        if (!empty($rules['exclude_past']) && $date < new \DateTime('today')) {
+            $this->addError($field->key, sprintf('"%s" non può essere una data passata.', $field->label));
+        }
+
+        // ISO-8601: 6 = sabato, 7 = domenica.
+        if (!empty($rules['exclude_weekends']) && (int) $date->format('N') >= 6) {
+            $this->addError($field->key, sprintf('"%s" non può cadere di sabato o domenica.', $field->label));
+        }
     }
 
     private function isAllowedTimeSlot(FormField $field, string $value): bool

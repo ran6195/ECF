@@ -121,12 +121,35 @@
     var form = shadow.querySelector('form.ecf-form');
     if (!form) return null;
 
+    wireDateConstraints(form);
+
     form.addEventListener('submit', function (event) {
       event.preventDefault();
       submitForm(shadow, form, uuid);
     });
 
     return form;
+  }
+
+  // --- Vincoli data lato client (solo UX: l'autorità resta FormValidator lato server) ---
+  // "Escludi date passate" è già applicato nativamente dal browser via l'attributo
+  // min sull'<input type="date">. "Escludi weekend" non ha un equivalente HTML: il
+  // picker nativo non permette di disabilitare singoli giorni della settimana, quindi
+  // annulliamo la selezione subito dopo il cambio, se cade di sabato o domenica.
+  function wireDateConstraints(form) {
+    var fields = form.querySelectorAll('input[type="date"][data-ecf-exclude-weekends]');
+    fields.forEach(function (field) {
+      field.addEventListener('change', function () {
+        if (!field.value) return;
+        var day = new Date(field.value + 'T00:00:00').getDay(); // 0 = domenica, 6 = sabato
+        if (day === 0 || day === 6) {
+          field.value = '';
+          showFieldError(field, 'Il sabato e la domenica non sono disponibili per questo campo.');
+        } else {
+          clearFieldError(field);
+        }
+      });
+    });
   }
 
   function submitForm(shadow, form, uuid) {
@@ -237,16 +260,33 @@
     Object.keys(errors).forEach(function (key) {
       var messages = errors[key];
       var field = form.querySelector('[name="' + key + '"], [name="' + key + '[]"]');
-      var container = field ? field.closest('.ecf-field') : null;
-      if (field && field.classList) field.classList.add('is-invalid');
-
-      if (container) {
-        var p = document.createElement('p');
-        p.className = 'ecf-field-error';
-        p.textContent = Array.isArray(messages) ? messages.join(' ') : String(messages);
-        container.appendChild(p);
+      if (field) {
+        showFieldError(field, Array.isArray(messages) ? messages.join(' ') : String(messages));
       }
     });
+  }
+
+  // --- Errore per singolo campo: usato sia dagli errori 422 del server sia dai vincoli lato client ---
+  function showFieldError(field, message) {
+    clearFieldError(field);
+    if (field.classList) field.classList.add('is-invalid');
+
+    var container = field.closest('.ecf-field');
+    if (container) {
+      var p = document.createElement('p');
+      p.className = 'ecf-field-error';
+      p.textContent = message;
+      container.appendChild(p);
+    }
+  }
+
+  function clearFieldError(field) {
+    if (field.classList) field.classList.remove('is-invalid');
+    var container = field.closest('.ecf-field');
+    if (container) {
+      var existing = container.querySelector('.ecf-field-error');
+      if (existing) existing.remove();
+    }
   }
 
   // --- Avvio: trova tutti i form e caricali ---
