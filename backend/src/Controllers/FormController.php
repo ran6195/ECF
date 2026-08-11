@@ -15,7 +15,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 
 final class FormController
 {
-    private const FIELD_TYPES = ['text', 'email', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'hidden', 'privacy_consent'];
+    private const FIELD_TYPES = ['text', 'email', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'hidden', 'privacy_consent', 'time_slot'];
     private const STATUSES = ['draft', 'active', 'disabled'];
 
     /** GET /api/forms → lista con conteggio submission. */
@@ -413,7 +413,7 @@ final class FormController
             return null;
         }
 
-        $allowed = ['min', 'max', 'minLength', 'maxLength', 'regex', 'link_url', 'link_text'];
+        $allowed = ['min', 'max', 'minLength', 'maxLength', 'regex', 'link_url', 'link_text', 'start_time', 'end_time', 'step'];
         $out = [];
         foreach ($allowed as $k) {
             if (isset($value[$k]) && $value[$k] !== '' && $value[$k] !== null) {
@@ -424,7 +424,7 @@ final class FormController
                     }
                     continue;
                 }
-                $out[$k] = in_array($k, ['regex', 'link_text'], true) ? (string) $value[$k] : $value[$k];
+                $out[$k] = in_array($k, ['regex', 'link_text', 'start_time', 'end_time'], true) ? (string) $value[$k] : $value[$k];
             }
         }
 

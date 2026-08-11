@@ -19,17 +19,30 @@ const TYPES = [
   { value: 'date', label: 'Data' },
   { value: 'hidden', label: 'Nascosto' },
   { value: 'privacy_consent', label: 'Consenso privacy (obbligatorio)' },
+  { value: 'time_slot', label: 'Fascia oraria' },
 ]
+
+const TIME_SLOT_STEPS = [15, 30]
+const TIME_SLOT_DEFAULTS = { start_time: '08:00', end_time: '17:00', step: 30 }
 
 const hasOptions = computed(() => ['select', 'radio', 'checkbox'].includes(props.field.type))
 const hasValidation = computed(() => ['text', 'email', 'textarea', 'number'].includes(props.field.type))
 const isNumber = computed(() => props.field.type === 'number')
 const isPrivacyConsent = computed(() => props.field.type === 'privacy_consent')
+const isTimeSlot = computed(() => props.field.type === 'time_slot')
 
 // La checkbox privacy è sempre obbligatoria: forza il flag in UI (l'autorità
 // resta comunque il backend, che lo forza a prescindere da cosa arriva dal client).
+// La fascia oraria parte precompilata (08:00-17:00, step 30') così l'anteprima
+// mostra subito delle opzioni sensate.
 watch(() => props.field.type, (type) => {
   if (type === 'privacy_consent') props.field.required = true
+  if (type === 'time_slot') {
+    ensureValidation()
+    for (const k in TIME_SLOT_DEFAULTS) {
+      if (!props.field.validation[k]) props.field.validation[k] = TIME_SLOT_DEFAULTS[k]
+    }
+  }
 })
 
 function ensureOptions() {
@@ -112,6 +125,27 @@ function autoKey() {
           <label class="field-label small">Testo del link</label>
           <input :value="field.validation?.link_text" @input="ensureValidation(); field.validation.link_text = $event.target.value" placeholder="informativa sulla privacy" />
         </div>
+      </div>
+    </div>
+
+    <!-- Fascia oraria: ora inizio/fine + step, le opzioni della select sono generate dal backend -->
+    <div v-if="isTimeSlot" class="sub-section">
+      <span class="field-label">Fascia oraria</span>
+      <div class="grid-2">
+        <div>
+          <label class="field-label small">Ora inizio</label>
+          <input type="time" :value="field.validation?.start_time" @input="ensureValidation(); field.validation.start_time = $event.target.value" />
+        </div>
+        <div>
+          <label class="field-label small">Ora fine</label>
+          <input type="time" :value="field.validation?.end_time" @input="ensureValidation(); field.validation.end_time = $event.target.value" />
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:10px">
+        <label class="field-label small">Intervallo</label>
+        <select :value="field.validation?.step" @change="ensureValidation(); field.validation.step = Number($event.target.value)">
+          <option v-for="s in TIME_SLOT_STEPS" :key="s" :value="s">{{ s }} minuti</option>
+        </select>
       </div>
     </div>
 

@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS `form_fields` (
   `form_id` BIGINT UNSIGNED NOT NULL,
   `key` VARCHAR(100) NOT NULL,
   `label` VARCHAR(190) NOT NULL,
-  `type` ENUM('text','email','textarea','number','select','radio','checkbox','date','hidden','privacy_consent') NOT NULL,
+  `type` ENUM('text','email','textarea','number','select','radio','checkbox','date','hidden','privacy_consent','time_slot') NOT NULL,
   `required` TINYINT(1) NOT NULL DEFAULT 0,
   `placeholder` VARCHAR(190) NULL,
   `options` JSON NULL,

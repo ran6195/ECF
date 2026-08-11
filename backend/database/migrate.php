@@ -100,7 +100,7 @@ if (!$schema->hasTable('form_fields')) {
         $t->unsignedBigInteger('form_id');
         $t->string('key', 100);
         $t->string('label', 190);
-        $t->enum('type', ['text', 'email', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'hidden', 'privacy_consent']);
+        $t->enum('type', ['text', 'email', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'hidden', 'privacy_consent', 'time_slot']);
         $t->boolean('required')->default(false);
         $t->string('placeholder', 190)->nullable();
         $t->json('options')->nullable();
@@ -114,12 +114,12 @@ if (!$schema->hasTable('form_fields')) {
     echo "Creata tabella: form_fields\n";
 }
 
-// --- form_fields.type: aggiunge 'privacy_consent' all'ENUM (per installazioni preesistenti) ---
+// --- form_fields.type: mantiene l'ENUM sincronizzato con FormController::FIELD_TYPES (per installazioni preesistenti) ---
 // MODIFY COLUMN con lo stesso set di valori è rieseguibile senza errori: nessun guard aggiuntivo necessario.
 if ($schema->hasTable('form_fields')) {
     Capsule::statement(
         "ALTER TABLE form_fields MODIFY COLUMN type "
-        . "ENUM('text','email','textarea','number','select','radio','checkbox','date','hidden','privacy_consent') NOT NULL"
+        . "ENUM('text','email','textarea','number','select','radio','checkbox','date','hidden','privacy_consent','time_slot') NOT NULL"
     );
 }
 

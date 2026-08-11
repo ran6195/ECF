@@ -81,6 +81,7 @@ final class FormRenderer
         $control = match ($field->type) {
             'textarea' => $this->textarea($field, $id, $requiredAttr),
             'select' => $this->select($field, $id, $requiredAttr),
+            'time_slot' => $this->select($field, $id, $requiredAttr, $this->timeSlotOptions($field)),
             'radio' => $this->radioGroup($field, $id),
             'checkbox' => $this->checkboxGroup($field, $id),
             'hidden' => $this->hidden($field),
@@ -144,11 +145,15 @@ final class FormRenderer
         );
     }
 
-    private function select(FormField $field, string $id, string $requiredAttr): string
+    /**
+     * @param array<int, array{0:string,1:string}>|null $opts coppie [value,label]; se
+     *        omesso vengono lette da $field->options (comportamento per il tipo "select").
+     */
+    private function select(FormField $field, string $id, string $requiredAttr, ?array $opts = null): string
     {
-        $opts = '<option value="">— Seleziona —</option>';
-        foreach ($this->options($field) as [$value, $label]) {
-            $opts .= sprintf('<option value="%s">%s</option>', $this->e($value), $this->e($label));
+        $optionsHtml = '<option value="">— Seleziona —</option>';
+        foreach ($opts ?? $this->options($field) as [$value, $label]) {
+            $optionsHtml .= sprintf('<option value="%s">%s</option>', $this->e($value), $this->e($label));
         }
 
         return sprintf(
@@ -156,7 +161,7 @@ final class FormRenderer
             $id,
             $this->e($field->key),
             $requiredAttr,
-            $opts
+            $optionsHtml
         );
     }
 
@@ -286,6 +291,18 @@ final class FormRenderer
         }
 
         return $out;
+    }
+
+    /**
+     * @return array<int, array{0:string,1:string}> coppie [value, label] generate
+     *         da ora inizio/fine e step (field->validation), non da $field->options.
+     */
+    private function timeSlotOptions(FormField $field): array
+    {
+        $rules = $field->validation ?? [];
+        $slots = TimeSlotGenerator::generate($rules['start_time'] ?? null, $rules['end_time'] ?? null, $rules['step'] ?? null);
+
+        return array_map(static fn (string $slot) => [$slot, $slot], $slots);
     }
 
     private function validationAttrs(FormField $field): string

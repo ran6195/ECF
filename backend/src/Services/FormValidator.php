@@ -104,6 +104,12 @@ final class FormValidator
                     $this->addError($key, sprintf('Valore non valido per "%s".', $field->label));
                 }
                 break;
+
+            case 'time_slot':
+                if (!$this->isAllowedTimeSlot($field, $value)) {
+                    $this->addError($key, sprintf('Valore non valido per "%s".', $field->label));
+                }
+                break;
         }
 
         // Regole generiche da "validation".
@@ -191,6 +197,14 @@ final class FormValidator
         }
 
         return false;
+    }
+
+    private function isAllowedTimeSlot(FormField $field, string $value): bool
+    {
+        $rules = $field->validation ?? [];
+        $slots = TimeSlotGenerator::generate($rules['start_time'] ?? null, $rules['end_time'] ?? null, $rules['step'] ?? null);
+
+        return in_array($value, $slots, true);
     }
 
     private function isValidDate(string $value): bool

@@ -90,4 +90,29 @@ final class FormValidatorTest extends TestCase
         $this->assertFalse($validator->validate($form, ['colore' => 'verde']));
         $this->assertTrue($validator->validate($form, ['colore' => 'r']));
     }
+
+    public function testTimeSlotMustBelongToGeneratedRange(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'orario', 'label' => 'Orario', 'type' => 'time_slot', 'required' => true, 'validation' => [
+                'start_time' => '09:00', 'end_time' => '10:00', 'step' => 30,
+            ]],
+        ]);
+
+        $validator = new FormValidator();
+        $this->assertTrue($validator->validate($form, ['orario' => '09:30']));
+        $this->assertFalse($validator->validate($form, ['orario' => '09:15'])); // non è un multiplo dello step
+        $this->assertFalse($validator->validate($form, ['orario' => '11:00'])); // fuori range
+    }
+
+    public function testTimeSlotUsesDefaultRangeWhenUnconfigured(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'orario', 'label' => 'Orario', 'type' => 'time_slot', 'required' => true],
+        ]);
+
+        $validator = new FormValidator();
+        $this->assertTrue($validator->validate($form, ['orario' => '08:00'])); // default 08:00-17:00 step 30
+        $this->assertFalse($validator->validate($form, ['orario' => '07:30']));
+    }
 }

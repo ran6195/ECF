@@ -128,4 +128,33 @@ final class FormRendererTest extends TestCase
         $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
         $this->assertStringContainsString('&lt;script&gt;', $html);
     }
+
+    public function testTimeSlotRendersGeneratedOptions(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'orario', 'label' => 'Orario', 'type' => 'time_slot', 'validation' => [
+                'start_time' => '09:00', 'end_time' => '10:00', 'step' => 30,
+            ]],
+        ]);
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringContainsString('<select class="ecf-input ecf-select" id="ecf-orario" name="orario">', $html);
+        $this->assertStringContainsString('<option value="09:00">09:00</option>', $html);
+        $this->assertStringContainsString('<option value="09:30">09:30</option>', $html);
+        $this->assertStringContainsString('<option value="10:00">10:00</option>', $html);
+        $this->assertStringNotContainsString('<option value="10:30">', $html);
+    }
+
+    public function testTimeSlotFallsBackToDefaultRange(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'orario', 'label' => 'Orario', 'type' => 'time_slot'],
+        ]);
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringContainsString('<option value="08:00">08:00</option>', $html);
+        $this->assertStringContainsString('<option value="17:00">17:00</option>', $html);
+    }
 }
