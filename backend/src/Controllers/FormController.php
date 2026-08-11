@@ -413,7 +413,7 @@ final class FormController
             return null;
         }
 
-        $allowed = ['min', 'max', 'minLength', 'maxLength', 'regex', 'link_url', 'link_text', 'start_time', 'end_time', 'step', 'exclude_past', 'exclude_weekends'];
+        $allowed = ['min', 'max', 'minLength', 'maxLength', 'regex', 'link_url', 'link_text', 'start_time', 'end_time', 'step', 'exclude_past', 'exclude_weekends', 'placeholder_label'];
         $boolKeys = ['exclude_past', 'exclude_weekends'];
         $out = [];
         foreach ($allowed as $k) {
@@ -431,7 +431,7 @@ final class FormController
                     }
                     continue;
                 }
-                $out[$k] = in_array($k, ['regex', 'link_text', 'start_time', 'end_time'], true) ? (string) $value[$k] : $value[$k];
+                $out[$k] = in_array($k, ['regex', 'link_text', 'start_time', 'end_time', 'placeholder_label'], true) ? (string) $value[$k] : $value[$k];
             }
         }
 

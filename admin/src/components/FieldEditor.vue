@@ -31,6 +31,7 @@ const isNumber = computed(() => props.field.type === 'number')
 const isPrivacyConsent = computed(() => props.field.type === 'privacy_consent')
 const isTimeSlot = computed(() => props.field.type === 'time_slot')
 const isDate = computed(() => props.field.type === 'date')
+const hasPlaceholderOption = computed(() => ['select', 'time_slot'].includes(props.field.type))
 
 // La checkbox privacy è sempre obbligatoria: forza il flag in UI (l'autorità
 // resta comunque il backend, che lo forza a prescindere da cosa arriva dal client).
@@ -127,6 +128,12 @@ function autoKey() {
           <input :value="field.validation?.link_text" @input="ensureValidation(); field.validation.link_text = $event.target.value" placeholder="informativa sulla privacy" />
         </div>
       </div>
+    </div>
+
+    <!-- Prima opzione (placeholder) del <select>: comune a menu a tendina e fascia oraria -->
+    <div v-if="hasPlaceholderOption" class="sub-section">
+      <label class="field-label small">Testo prima opzione</label>
+      <input :value="field.validation?.placeholder_label" @input="ensureValidation(); field.validation.placeholder_label = $event.target.value" placeholder="— Seleziona —" />
     </div>
 
     <!-- Fascia oraria: ora inizio/fine + step, le opzioni della select sono generate dal backend -->

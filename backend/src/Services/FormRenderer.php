@@ -175,7 +175,9 @@ final class FormRenderer
      */
     private function select(FormField $field, string $id, string $requiredAttr, ?array $opts = null): string
     {
-        $optionsHtml = '<option value="">— Seleziona —</option>';
+        $rules = $field->validation ?? [];
+        $placeholderLabel = (string) ($rules['placeholder_label'] ?? '— Seleziona —');
+        $optionsHtml = '<option value="">' . $this->e($placeholderLabel) . '</option>';
         foreach ($opts ?? $this->options($field) as [$value, $label]) {
             $optionsHtml .= sprintf('<option value="%s">%s</option>', $this->e($value), $this->e($label));
         }

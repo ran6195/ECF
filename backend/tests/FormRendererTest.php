@@ -158,6 +158,49 @@ final class FormRendererTest extends TestCase
         $this->assertStringContainsString('<option value="17:00">17:00</option>', $html);
     }
 
+    public function testSelectUsesDefaultPlaceholderWhenNotConfigured(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'colore', 'label' => 'Colore', 'type' => 'select', 'options' => [
+                ['value' => 'rosso', 'label' => 'Rosso'],
+            ]],
+        ]);
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringContainsString('<option value="">— Seleziona —</option>', $html);
+    }
+
+    public function testSelectPlaceholderLabelIsConfigurable(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'colore', 'label' => 'Colore', 'type' => 'select', 'options' => [
+                ['value' => 'rosso', 'label' => 'Rosso'],
+            ], 'validation' => [
+                'placeholder_label' => 'Scegli un colore...',
+            ]],
+        ]);
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringContainsString('<option value="">Scegli un colore...</option>', $html);
+        $this->assertStringNotContainsString('— Seleziona —', $html);
+    }
+
+    public function testTimeSlotPlaceholderLabelIsConfigurable(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'orario', 'label' => 'Orario', 'type' => 'time_slot', 'validation' => [
+                'start_time' => '09:00', 'end_time' => '10:00', 'step' => 30,
+                'placeholder_label' => 'Scegli un orario...',
+            ]],
+        ]);
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringContainsString('<option value="">Scegli un orario...</option>', $html);
+    }
+
     public function testDateFieldRendersConstraintAttributesWhenConfigured(): void
     {
         $form = Support::makeForm([
