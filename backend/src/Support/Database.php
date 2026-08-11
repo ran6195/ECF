@@ -20,6 +20,10 @@ final class Database
             return self::$capsule;
         }
 
+        // Fissa il fuso orario dell'app (PHP/Carbon) a Europe/Rome, indipendentemente
+        // dal default del server/hosting.
+        date_default_timezone_set('Europe/Rome');
+
         $capsule = new Capsule();
 
         $capsule->addConnection([
@@ -34,6 +38,10 @@ final class Database
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
             'strict' => false,
+            // Offset numerico (non nome di zona) così funziona anche se il server MySQL
+            // non ha le tabelle di fuso orario caricate; calcolato da PHP per seguire
+            // automaticamente CET/CEST.
+            'timezone' => (new \DateTime('now', new \DateTimeZone('Europe/Rome')))->format('P'),
         ]);
 
         // Rende disponibili i metodi statici sui Model Eloquent.
