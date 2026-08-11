@@ -264,7 +264,8 @@ onMounted(load)
 </template>
 
 <style scoped>
-.builder { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
+.container { max-width: 1360px; }
+.builder { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start; }
 .builder-side { position: sticky; top: 20px; }
 .checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .checkbox-row input { margin: 0; }
