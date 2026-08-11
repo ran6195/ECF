@@ -104,10 +104,21 @@ final class FormRenderer
             HTML;
         }
 
+        // "Escludi weekend" non ha un equivalente HTML nativo visibile prima della
+        // selezione (a differenza di "escludi passato", che il browser disabilita
+        // nativamente nel picker via l'attributo min): un hint testuale statico
+        // avvisa l'utente in anticipo. embed.js resta comunque la rete di sicurezza
+        // reattiva se l'utente seleziona un weekend nonostante l'avviso.
+        $hint = '';
+        if ($field->type === 'date' && !empty(($field->validation ?? [])['exclude_weekends'])) {
+            $hint = '<p class="ecf-field-hint">Sabato e domenica non disponibili.</p>';
+        }
+
         return <<<HTML
                   <div class="ecf-field ecf-field-{$this->e($field->type)}">
                     <label class="ecf-label" for="{$id}">{$label}{$required}</label>
                     {$control}
+                    {$hint}
                   </div>
 
         HTML;
@@ -396,7 +407,8 @@ final class FormRenderer
           .ecf-message.is-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
           .ecf-message.is-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
           .ecf-input.is-invalid { border-color: #dc2626; }
-          .ecf-field-error { color: #dc2626; font-size: .82rem; margin: 0; }{$customBlock}
+          .ecf-field-error { color: #dc2626; font-size: .82rem; margin: 0; }
+          .ecf-field-hint { color: #6b7280; font-size: .82rem; margin: 2px 0 0; }{$customBlock}
         </style>
         CSS;
     }

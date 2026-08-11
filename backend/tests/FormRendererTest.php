@@ -216,6 +216,32 @@ final class FormRendererTest extends TestCase
         $this->assertStringContainsString('data-ecf-exclude-weekends="1"', $html);
     }
 
+    public function testDateFieldWithExcludeWeekendsRendersHint(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'appuntamento', 'label' => 'Appuntamento', 'type' => 'date', 'validation' => [
+                'exclude_weekends' => true,
+            ]],
+        ]);
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringContainsString('<p class="ecf-field-hint">Sabato e domenica non disponibili.</p>', $html);
+    }
+
+    public function testDateFieldWithoutExcludeWeekendsHasNoHint(): void
+    {
+        $form = Support::makeForm([
+            ['key' => 'appuntamento', 'label' => 'Appuntamento', 'type' => 'date', 'validation' => [
+                'exclude_past' => true,
+            ]],
+        ]);
+
+        $html = (new FormRenderer())->render($form);
+
+        $this->assertStringNotContainsString('<p class="ecf-field-hint">', $html);
+    }
+
     public function testDateFieldWithoutConstraintsHasNoExtraAttributes(): void
     {
         $form = Support::makeForm([
