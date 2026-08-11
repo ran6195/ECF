@@ -82,7 +82,14 @@ onMounted(() => load(1))
             <td>{{ s.id }}</td>
             <td v-for="f in fields" :key="f.key">{{ cell(s.payload, f.key) }}</td>
             <td class="small muted">{{ s.created_at }}</td>
-            <td><button class="btn small ghost" @click="detail = s">Dettaglio</button></td>
+            <td>
+              <button class="btn small ghost icon-btn" title="Dettaglio" aria-label="Dettaglio" @click="detail = s">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -121,4 +128,5 @@ onMounted(() => load(1))
 <style scoped>
 .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
 .modal { width: 100%; max-width: 560px; max-height: 85vh; overflow: auto; margin: 0; }
+.icon-btn { padding: 6px; }
 </style>
