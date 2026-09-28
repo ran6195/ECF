@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test ECF — verifica embed su sito esterno</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; color: #111; background: #f8fafc; }
+    h1 { font-size: 1.4rem; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0; }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
+    .note { color: #64748b; font-size: .9rem; }
+    #ecf-status { font-weight: 600; padding: 10px 14px; border-radius: 8px; margin: 20px 0; }
+    #ecf-status.ok { background: #dcfce7; color: #166534; }
+    #ecf-status.error { background: #fee2e2; color: #991b1b; }
+    #ecf-status.waiting { background: #e2e8f0; color: #334155; }
+  </style>
+</head>
+<body>
+  <h1>Test minimo ECF — form su sito esterno</h1>
+  <p class="note">
+    Questa pagina serve a verificare che il form ECF venga caricato ed
+    interagito correttamente quando ospitato su un dominio esterno reale
+    (a differenza della pagina di test in locale, qui si controllano anche
+    CORS e whitelist origini).
+  </p>
+
+  <p class="note">
+    Prima di caricarla: sostituisci <code>UUID_DEL_FORM</code> con l'UUID
+    pubblico del form da testare e, se necessario, l'URL base dell'API
+    (di default punta all'ambiente di collaudo
+    <code>https://edysma.net/testECF</code>). Assicurati che il dominio da
+    cui apri questa pagina sia nella whitelist <code>allowed_origins</code>
+    del form, oppure che il form sia in modalità aperta (whitelist vuota).
+  </p>
+
+  <div id="ecf-status" class="waiting">In attesa del caricamento del form…</div>
+
+  <div class="card">
+    <h2>Form di test</h2>
+    <div data-ecf-form="UUID_DEL_FORM"></div>
+  </div>
+
+  <script src="https://edysma.net/testECF/embed.js" data-api="https://edysma.net/testECF" async></script>
+
+  <script>
+    (function () {
+      var statusEl = document.getElementById('ecf-status');
+      var host = document.querySelector('[data-ecf-form]');
+
+      setTimeout(function () {
+        if (host && host.shadowRoot) {
+          statusEl.textContent = 'OK — il form è stato caricato correttamente.';
+          statusEl.className = 'ok';
+        } else {
+          statusEl.textContent = 'Errore — il form non risulta caricato. Verifica UUID, data-api, stato del form e whitelist origini (controlla anche la console del browser).';
+          statusEl.className = 'error';
+        }
+      }, 4000);
+    })();
+  </script>
+</body>
+</html>
