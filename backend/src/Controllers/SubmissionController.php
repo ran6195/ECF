@@ -41,6 +41,8 @@ final class SubmissionController
             ],
             // Le chiavi dei campi: utile all'admin per costruire le colonne.
             'fields' => $form->fields->map(fn ($f) => ['key' => $f->key, 'label' => $f->label])->values(),
+            // Dice all'admin se mostrare la colonna di stato sincronizzazione Brevo.
+            'brevo_enabled' => $form->brevo_enabled,
         ]);
     }
 
@@ -93,6 +95,8 @@ final class SubmissionController
             'source_url' => $s->source_url,
             'ip' => $s->ip,
             'user_agent' => $s->user_agent,
+            'brevo_synced_at' => optional($s->brevo_synced_at)->toDateTimeString(),
+            'brevo_sync_error' => $s->brevo_sync_error,
             'created_at' => optional($s->created_at)->toDateTimeString(),
         ];
     }

@@ -30,7 +30,7 @@ $fresh = in_array('--fresh', $argv ?? [], true);
 if ($fresh) {
     echo "Modalità --fresh: elimino le tabelle esistenti...\n";
     $schema->disableForeignKeyConstraints();
-    foreach (['submissions', 'form_fields', 'forms', 'users'] as $table) {
+    foreach (['brevo_attributes', 'submissions', 'form_fields', 'forms', 'users'] as $table) {
         $schema->dropIfExists($table);
     }
     $schema->enableForeignKeyConstraints();
@@ -61,6 +61,10 @@ if (!$schema->hasTable('forms')) {
         $t->boolean('recaptcha_enabled')->default(false);
         $t->string('recaptcha_site_key', 190)->nullable();
         $t->string('recaptcha_secret_key', 190)->nullable();
+        $t->boolean('brevo_enabled')->default(false);
+        $t->string('brevo_api_key', 190)->nullable();
+        $t->unsignedInteger('brevo_list_id')->nullable();
+        $t->json('brevo_field_mapping')->nullable();
         $t->enum('status', ['draft', 'active', 'disabled'])->default('draft');
         $t->timestamps();
     });
@@ -91,6 +95,17 @@ if ($schema->hasTable('forms') && !$schema->hasColumn('forms', 'recaptcha_enable
         $t->string('recaptcha_secret_key', 190)->nullable()->after('recaptcha_site_key');
     });
     echo "Aggiunte colonne: forms.recaptcha_enabled, recaptcha_site_key, recaptcha_secret_key\n";
+}
+
+// --- forms.brevo_* (per installazioni preesistenti) ---
+if ($schema->hasTable('forms') && !$schema->hasColumn('forms', 'brevo_enabled')) {
+    $schema->table('forms', function (Blueprint $t) {
+        $t->boolean('brevo_enabled')->default(false)->after('recaptcha_secret_key');
+        $t->string('brevo_api_key', 190)->nullable()->after('brevo_enabled');
+        $t->unsignedInteger('brevo_list_id')->nullable()->after('brevo_api_key');
+        $t->json('brevo_field_mapping')->nullable()->after('brevo_list_id');
+    });
+    echo "Aggiunte colonne: forms.brevo_enabled, brevo_api_key, brevo_list_id, brevo_field_mapping\n";
 }
 
 // --- form_fields ---
@@ -132,11 +147,39 @@ if (!$schema->hasTable('submissions')) {
         $t->string('source_url', 500)->nullable();
         $t->string('ip', 45)->nullable();
         $t->string('user_agent', 255)->nullable();
+        $t->timestamp('brevo_synced_at')->nullable();
+        $t->string('brevo_sync_error', 500)->nullable();
         $t->timestamp('created_at')->useCurrent();
 
         $t->foreign('form_id')->references('id')->on('forms')->onDelete('cascade');
     });
     echo "Creata tabella: submissions\n";
+}
+
+// --- submissions.brevo_* (per installazioni preesistenti) ---
+if ($schema->hasTable('submissions') && !$schema->hasColumn('submissions', 'brevo_synced_at')) {
+    $schema->table('submissions', function (Blueprint $t) {
+        $t->timestamp('brevo_synced_at')->nullable()->after('user_agent');
+        $t->string('brevo_sync_error', 500)->nullable()->after('brevo_synced_at');
+    });
+    echo "Aggiunte colonne: submissions.brevo_synced_at, brevo_sync_error\n";
+}
+
+// --- brevo_attributes ---
+// Cache per-form degli attributi contatto Brevo (category "normal"), aggiornata
+// ad ogni test di connessione riuscito dalla modale di configurazione admin.
+if (!$schema->hasTable('brevo_attributes')) {
+    $schema->create('brevo_attributes', function (Blueprint $t) {
+        $t->bigIncrements('id');
+        $t->unsignedBigInteger('form_id');
+        $t->string('name', 190);
+        $t->string('type', 50)->nullable();
+        $t->timestamps();
+
+        $t->unique(['form_id', 'name']);
+        $t->foreign('form_id')->references('id')->on('forms')->onDelete('cascade');
+    });
+    echo "Creata tabella: brevo_attributes\n";
 }
 
 echo "Migrazione completata.\n";

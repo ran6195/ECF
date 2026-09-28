@@ -18,6 +18,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $recaptcha_enabled
  * @property string|null $recaptcha_site_key
  * @property string|null $recaptcha_secret_key
+ * @property bool $brevo_enabled
+ * @property string|null $brevo_api_key
+ * @property int|null $brevo_list_id
+ * @property array|null $brevo_field_mapping
  * @property string $status
  */
 class Form extends Model
@@ -35,6 +39,10 @@ class Form extends Model
         'recaptcha_enabled',
         'recaptcha_site_key',
         'recaptcha_secret_key',
+        'brevo_enabled',
+        'brevo_api_key',
+        'brevo_list_id',
+        'brevo_field_mapping',
         'status',
     ];
 
@@ -42,6 +50,8 @@ class Form extends Model
         'allowed_origins' => 'array',
         'style' => 'array',
         'recaptcha_enabled' => 'boolean',
+        'brevo_enabled' => 'boolean',
+        'brevo_field_mapping' => 'array',
     ];
 
     /**
@@ -107,6 +117,11 @@ class Form extends Model
         return $this->hasMany(Submission::class);
     }
 
+    public function brevoAttributes(): HasMany
+    {
+        return $this->hasMany(BrevoAttribute::class)->orderBy('name');
+    }
+
     public function isActive(): bool
     {
         return $this->status === 'active';
@@ -128,5 +143,19 @@ class Form extends Model
         return (bool) $this->recaptcha_enabled
             && is_string($this->recaptcha_site_key) && $this->recaptcha_site_key !== ''
             && is_string($this->recaptcha_secret_key) && $this->recaptcha_secret_key !== '';
+    }
+
+    /**
+     * True se la sincronizzazione Brevo è attiva e configurata correttamente
+     * (chiave, lista e mappatura dell'email tutte presenti).
+     */
+    public function brevoActive(): bool
+    {
+        $mapping = $this->brevo_field_mapping ?? [];
+
+        return (bool) $this->brevo_enabled
+            && is_string($this->brevo_api_key) && $this->brevo_api_key !== ''
+            && $this->brevo_list_id !== null
+            && is_array($mapping) && !empty($mapping['EMAIL']);
     }
 }

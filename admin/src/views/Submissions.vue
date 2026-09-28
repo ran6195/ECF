@@ -12,6 +12,7 @@ const pagination = ref({ page: 1, per_page: 20, total: 0, last_page: 1 })
 const loading = ref(true)
 const error = ref('')
 const detail = ref(null)
+const brevoEnabled = ref(false)
 
 async function load(page = 1) {
   loading.value = true
@@ -21,6 +22,7 @@ async function load(page = 1) {
     items.value = res.data.items
     fields.value = res.data.fields
     pagination.value = res.data.pagination
+    brevoEnabled.value = !!res.data.brevo_enabled
   } catch (e) {
     error.value = e.message
   } finally {
@@ -73,6 +75,7 @@ onMounted(() => load(1))
           <tr>
             <th>#</th>
             <th v-for="f in fields" :key="f.key">{{ f.label }}</th>
+            <th v-if="brevoEnabled">Brevo</th>
             <th>Data</th>
             <th></th>
           </tr>
@@ -81,6 +84,11 @@ onMounted(() => load(1))
           <tr v-for="s in items" :key="s.id">
             <td>{{ s.id }}</td>
             <td v-for="f in fields" :key="f.key">{{ cell(s.payload, f.key) }}</td>
+            <td v-if="brevoEnabled">
+              <span v-if="s.brevo_synced_at" class="badge active" title="Sincronizzato">✓ Sincronizzato</span>
+              <span v-else-if="s.brevo_sync_error" class="badge" style="background:#fee2e2;color:#991b1b" :title="s.brevo_sync_error">✗ Errore</span>
+              <span v-else class="muted small">—</span>
+            </td>
             <td class="small muted">{{ s.created_at }}</td>
             <td>
               <button class="btn small ghost icon-btn" title="Dettaglio" aria-label="Dettaglio" @click="detail = s">

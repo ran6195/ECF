@@ -6,6 +6,7 @@ namespace Ecf\Controllers;
 
 use Ecf\Models\Form;
 use Ecf\Models\Submission;
+use Ecf\Services\BrevoService;
 use Ecf\Services\FormRenderer;
 use Ecf\Services\FormValidator;
 use Ecf\Services\RecaptchaVerifier;
@@ -87,6 +88,22 @@ final class EmbedController
             'user_agent' => $this->str($request->getHeaderLine('User-Agent'), 255),
         ]);
         $submission->save();
+
+        // Sync Brevo: mai bloccante per la risposta all'utente. Un fallimento
+        // (chiave errata, rete giù, ecc.) non deve far perdere la submission,
+        // che è già salvata sopra; resta solo visibile come errore in admin.
+        if ($form->brevoActive()) {
+            try {
+                (new BrevoService())->syncContact($form, $validator->clean());
+                // "now()" non esiste in questo progetto (solo componenti Illuminate,
+                // senza illuminate/foundation): una stringa data va bene comunque,
+                // il cast 'datetime' del model la normalizza al salvataggio.
+                $submission->brevo_synced_at = date('Y-m-d H:i:s');
+            } catch (\Throwable $e) {
+                $submission->brevo_sync_error = mb_substr($e->getMessage(), 0, 500);
+            }
+            $submission->save();
+        }
 
         return Response::success(
             $response,

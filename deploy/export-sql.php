@@ -69,6 +69,10 @@ CREATE TABLE IF NOT EXISTS `forms` (
   `recaptcha_enabled` TINYINT(1) NOT NULL DEFAULT 0,
   `recaptcha_site_key` VARCHAR(190) NULL,
   `recaptcha_secret_key` VARCHAR(190) NULL,
+  `brevo_enabled` TINYINT(1) NOT NULL DEFAULT 0,
+  `brevo_api_key` VARCHAR(190) NULL,
+  `brevo_list_id` INT UNSIGNED NULL,
+  `brevo_field_mapping` JSON NULL,
   `status` ENUM('draft','active','disabled') NOT NULL DEFAULT 'draft',
   `created_at` TIMESTAMP NULL DEFAULT NULL,
   `updated_at` TIMESTAMP NULL DEFAULT NULL,
@@ -103,9 +107,24 @@ CREATE TABLE IF NOT EXISTS `submissions` (
   `source_url` VARCHAR(500) NULL,
   `ip` VARCHAR(45) NULL,
   `user_agent` VARCHAR(255) NULL,
+  `brevo_synced_at` TIMESTAMP NULL DEFAULT NULL,
+  `brevo_sync_error` VARCHAR(500) NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   CONSTRAINT `submissions_form_id_foreign` FOREIGN KEY (`form_id`) REFERENCES `forms` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --- brevo_attributes ---
+CREATE TABLE IF NOT EXISTS `brevo_attributes` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `form_id` BIGINT UNSIGNED NOT NULL,
+  `name` VARCHAR(190) NOT NULL,
+  `type` VARCHAR(50) NULL,
+  `created_at` TIMESTAMP NULL DEFAULT NULL,
+  `updated_at` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `brevo_attributes_form_id_name_unique` (`form_id`,`name`),
+  CONSTRAINT `brevo_attributes_form_id_foreign` FOREIGN KEY (`form_id`) REFERENCES `forms` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================================

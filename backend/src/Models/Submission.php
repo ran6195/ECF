@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $source_url
  * @property string|null $ip
  * @property string|null $user_agent
+ * @property \Illuminate\Support\Carbon|null $brevo_synced_at
+ * @property string|null $brevo_sync_error
  */
 class Submission extends Model
 {
@@ -32,6 +34,7 @@ class Submission extends Model
 
     protected $casts = [
         'payload' => 'array',
+        'brevo_synced_at' => 'datetime',
     ];
 
     public function form(): BelongsTo

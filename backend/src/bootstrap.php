@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Dotenv\Dotenv;
 use Ecf\Controllers\AuthController;
+use Ecf\Controllers\BrevoController;
 use Ecf\Controllers\EmbedController;
 use Ecf\Controllers\FormController;
 use Ecf\Controllers\SubmissionController;
@@ -66,6 +67,8 @@ return (static function () {
         $group->post('/{id:[0-9]+}/duplicate', [FormController::class, 'duplicate']);
         $group->get('/{id:[0-9]+}/submissions', [SubmissionController::class, 'index']);
         $group->get('/{id:[0-9]+}/submissions/export', [SubmissionController::class, 'export']);
+        $group->post('/{id:[0-9]+}/brevo/test-connection', [BrevoController::class, 'testConnection']);
+        $group->get('/{id:[0-9]+}/brevo/attributes', [BrevoController::class, 'attributes']);
     })->add(new AuthMiddleware())->add(new AdminCorsMiddleware());
 
     // Preflight OPTIONS per le rotte admin (non coperte dai metodi sopra).

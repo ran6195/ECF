@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import { api, ApiError } from '../api/client'
+import BrevoConfigModal from '../components/BrevoConfigModal.vue'
 import FieldEditor from '../components/FieldEditor.vue'
 import FormPreview from '../components/FormPreview.vue'
 import SnippetBox from '../components/SnippetBox.vue'
@@ -26,7 +27,30 @@ const form = reactive({
   recaptcha_enabled: false,
   recaptcha_site_key: '',
   recaptcha_secret_key: '',
+  brevo_enabled: false,
+  brevo_api_key: '',
+  brevo_list_id: null,
+  brevo_field_mapping: {},
 })
+
+const brevoModalOpen = ref(false)
+const brevoConfigured = computed(() => !!(
+  form.brevo_api_key && form.brevo_list_id && form.brevo_field_mapping && form.brevo_field_mapping.EMAIL
+))
+
+function onBrevoToggle(checked) {
+  form.brevo_enabled = checked
+  if (checked && !brevoConfigured.value) {
+    brevoModalOpen.value = true
+  }
+}
+
+function onBrevoSave({ api_key, list_id, mapping }) {
+  form.brevo_api_key = api_key
+  form.brevo_list_id = list_id
+  form.brevo_field_mapping = mapping
+  brevoModalOpen.value = false
+}
 
 // allowed_origins gestito come testo (una origine per riga).
 const originsText = ref('')
@@ -83,6 +107,10 @@ function buildPayload() {
     recaptcha_enabled: !!form.recaptcha_enabled,
     recaptcha_site_key: form.recaptcha_site_key || null,
     recaptcha_secret_key: form.recaptcha_secret_key || null,
+    brevo_enabled: !!form.brevo_enabled,
+    brevo_api_key: form.brevo_api_key || null,
+    brevo_list_id: form.brevo_list_id || null,
+    brevo_field_mapping: form.brevo_field_mapping && Object.keys(form.brevo_field_mapping).length ? form.brevo_field_mapping : null,
     fields: form.fields.map((f, i) => ({
       id: f.id || undefined,
       key: f.key,
@@ -220,6 +248,28 @@ onMounted(load)
           </div>
         </div>
 
+        <!-- Integrazioni -->
+        <div class="card">
+          <h3 style="margin-top:0">Integrazioni</h3>
+          <label class="checkbox-row small">
+            <input type="checkbox" :checked="form.brevo_enabled" :disabled="!form.id" @change="onBrevoToggle($event.target.checked)" />
+            Sincronizza le submission su Brevo
+          </label>
+          <p v-if="!form.id" class="muted small" style="margin-top:8px">Salva il form per configurare l'integrazione Brevo.</p>
+          <template v-else-if="form.brevo_enabled">
+            <p v-if="brevoConfigured" class="muted small" style="margin-top:8px">
+              Lista #{{ form.brevo_list_id }} · {{ Object.keys(form.brevo_field_mapping || {}).length }} campi mappati
+            </p>
+            <p v-else class="alert error small" style="margin-top:8px">Configurazione incompleta: completa la connessione a Brevo.</p>
+            <button class="btn small secondary" type="button" style="margin-top:8px" @click="brevoModalOpen = true">
+              {{ brevoConfigured ? 'Modifica configurazione' : 'Configura Brevo' }}
+            </button>
+          </template>
+          <p v-if="fieldErrors.brevo_api_key" class="alert error small" style="margin-top:8px">{{ fieldErrors.brevo_api_key[0] }}</p>
+          <p v-if="fieldErrors.brevo_list_id" class="alert error small" style="margin-top:6px">{{ fieldErrors.brevo_list_id[0] }}</p>
+          <p v-if="fieldErrors['brevo_field_mapping.EMAIL']" class="alert error small" style="margin-top:6px">{{ fieldErrors['brevo_field_mapping.EMAIL'][0] }}</p>
+        </div>
+
         <!-- Campi -->
         <div class="card">
           <div class="flex between" style="margin-bottom:14px">
@@ -260,6 +310,17 @@ onMounted(load)
         </div>
       </aside>
     </div>
+
+    <BrevoConfigModal
+      :open="brevoModalOpen"
+      :form-id="form.id"
+      :api-key="form.brevo_api_key"
+      :list-id="form.brevo_list_id"
+      :mapping="form.brevo_field_mapping || {}"
+      :fields="form.fields"
+      @close="brevoModalOpen = false"
+      @save="onBrevoSave"
+    />
   </div>
 </template>
 

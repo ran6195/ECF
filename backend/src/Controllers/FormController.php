@@ -70,6 +70,10 @@ final class FormController
             'recaptcha_enabled' => !empty($body['recaptcha_enabled']),
             'recaptcha_site_key' => $this->nullableStr($body['recaptcha_site_key'] ?? null),
             'recaptcha_secret_key' => $this->nullableStr($body['recaptcha_secret_key'] ?? null),
+            'brevo_enabled' => !empty($body['brevo_enabled']),
+            'brevo_api_key' => $this->nullableStr($body['brevo_api_key'] ?? null),
+            'brevo_list_id' => $this->nullableInt($body['brevo_list_id'] ?? null),
+            'brevo_field_mapping' => $this->normalizeBrevoMapping($body['brevo_field_mapping'] ?? null, (array) ($body['fields'] ?? [])),
             'status' => $body['status'] ?? 'draft',
         ]);
         $form->save();
@@ -104,6 +108,10 @@ final class FormController
             'recaptcha_enabled' => !empty($body['recaptcha_enabled']),
             'recaptcha_site_key' => $this->nullableStr($body['recaptcha_site_key'] ?? null),
             'recaptcha_secret_key' => $this->nullableStr($body['recaptcha_secret_key'] ?? null),
+            'brevo_enabled' => !empty($body['brevo_enabled']),
+            'brevo_api_key' => $this->nullableStr($body['brevo_api_key'] ?? null),
+            'brevo_list_id' => $this->nullableInt($body['brevo_list_id'] ?? null),
+            'brevo_field_mapping' => $this->normalizeBrevoMapping($body['brevo_field_mapping'] ?? null, (array) ($body['fields'] ?? [])),
             'status' => $body['status'] ?? $form->status,
         ]);
         $form->save();
@@ -253,6 +261,10 @@ final class FormController
             'recaptcha_enabled' => $form->recaptcha_enabled,
             'recaptcha_site_key' => $form->recaptcha_site_key,
             'recaptcha_secret_key' => $form->recaptcha_secret_key,
+            'brevo_enabled' => $form->brevo_enabled,
+            'brevo_api_key' => $form->brevo_api_key,
+            'brevo_list_id' => $form->brevo_list_id,
+            'brevo_field_mapping' => $form->brevo_field_mapping,
             'status' => $form->status,
             'fields' => $form->fields->map(fn (FormField $f) => [
                 'id' => $f->id,
@@ -298,6 +310,32 @@ final class FormController
             }
             if ($this->normalizeOrigins($body['allowed_origins'] ?? null) === null) {
                 $errors['allowed_origins'][] = 'Origini autorizzate obbligatorie quando reCAPTCHA è attivo (la site key è valida solo per i domini registrati).';
+            }
+        }
+
+        $incomingFields = (array) ($body['fields'] ?? []);
+
+        // Brevo: se attivo, chiave/lista/mappatura email sono obbligatorie. Il
+        // controllo resta indipendente dal "test connessione" della UI (come per
+        // reCAPTCHA, il salvataggio richiede solo che i campi siano presenti).
+        if (!empty($body['brevo_enabled'])) {
+            if (trim((string) ($body['brevo_api_key'] ?? '')) === '') {
+                $errors['brevo_api_key'][] = 'La chiave API Brevo è obbligatoria quando l\'integrazione è attiva.';
+            }
+            if ($this->nullableInt($body['brevo_list_id'] ?? null) === null) {
+                $errors['brevo_list_id'][] = 'L\'ID della lista Brevo è obbligatorio quando l\'integrazione è attiva.';
+            }
+            $mapping = $this->normalizeBrevoMapping($body['brevo_field_mapping'] ?? null, $incomingFields);
+            $emailFieldKey = $mapping['EMAIL'] ?? null;
+            $emailField = null;
+            foreach ($incomingFields as $i => $f) {
+                if ($this->slugKey((string) ($f['key'] ?? ''), (int) $i) === $emailFieldKey) {
+                    $emailField = $f;
+                    break;
+                }
+            }
+            if ($emailFieldKey === null || $emailField === null || ($emailField['type'] ?? '') !== 'email') {
+                $errors['brevo_field_mapping.EMAIL'][] = 'Seleziona un campo di tipo Email da usare come contatto Brevo.';
             }
         }
 
@@ -383,6 +421,46 @@ final class FormController
         }
 
         return $out === [] ? null : $out;
+    }
+
+    /**
+     * Normalizza la mappatura Brevo: { "NOME_ATTRIBUTO_BREVO": "key_campo_form" }.
+     * Tiene solo le voci con chiave non vuota e il cui valore corrisponde a una
+     * `key` tra i campi inviati in questo stesso salvataggio (scarta il resto
+     * in silenzio, come normalizeOptions()/normalizeStyle()).
+     *
+     * @param array<int, array<string, mixed>> $incomingFields
+     */
+    private function normalizeBrevoMapping(mixed $value, array $incomingFields): ?array
+    {
+        if (!is_array($value)) {
+            return null;
+        }
+
+        $validKeys = [];
+        foreach ($incomingFields as $i => $f) {
+            $validKeys[] = $this->slugKey((string) ($f['key'] ?? ''), (int) $i);
+        }
+
+        $out = [];
+        foreach ($value as $attr => $fieldKey) {
+            $attr = trim((string) $attr);
+            $fieldKey = trim((string) $fieldKey);
+            if ($attr !== '' && $fieldKey !== '' && in_array($fieldKey, $validKeys, true)) {
+                $out[$attr] = $fieldKey;
+            }
+        }
+
+        return $out === [] ? null : $out;
+    }
+
+    private function nullableInt(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (int) $value : null;
     }
 
     private function normalizeOptions(mixed $value): ?array
