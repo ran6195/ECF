@@ -73,15 +73,39 @@ function removeField(i) {
   form.fields.splice(i, 1)
 }
 
+// Applica lo style ricevuto dal backend MUTANDO l'oggetto form.style esistente,
+// invece di sostituirlo con uno nuovo (`form.style = hydrateStyle(...)`).
+// Bug osservato: dopo ogni salvataggio i campi della card "Stile" (StyleEditor,
+// legato a :style="form.style") smettevano di rispondere a click/digitazione,
+// mentre i campi legati direttamente a proprietà di primo livello di `form`
+// (Nome, Descrizione, mai riassegnate) continuavano a funzionare — sintomo
+// tipico di un binding v-model rimasto agganciato al riferimento oggetto
+// precedente quando il prop viene sostituito anziché mutato. Riassegnando le
+// chiavi sull'oggetto esistente l'identità dell'oggetto passato come prop a
+// StyleEditor/FormPreview resta sempre la stessa.
+function applyStyle(rawStyle) {
+  const hydrated = hydrateStyle(rawStyle)
+  Object.keys(form.style.theme).forEach((k) => {
+    if (!(k in hydrated.theme)) delete form.style.theme[k]
+  })
+  Object.assign(form.style.theme, hydrated.theme)
+  form.style.customCss = hydrated.customCss
+}
+
 async function load() {
   if (!isEdit.value) return
   loading.value = true
   try {
     const res = await api.get(`/api/forms/${route.params.id}`)
-    Object.assign(form, res.data)
-    form.style = hydrateStyle(res.data.style)
+    // style e fields sono esclusi dall'assign generico e gestiti a parte
+    // (applyStyle/riga sotto): un Object.assign(form, res.data) qui
+    // sovrascriverebbe comunque form.style con l'oggetto grezzo del server,
+    // vanificando la mutazione in-place di applyStyle.
+    const { style, fields, ...rest } = res.data
+    Object.assign(form, rest)
+    applyStyle(style)
     // Aggiunge una chiave locale univoca a ogni campo (per il drag & drop).
-    form.fields = res.data.fields.map((f) => ({ ...f, _k: keySeq++ }))
+    form.fields = fields.map((f) => ({ ...f, _k: keySeq++ }))
     originsText.value = Array.isArray(res.data.allowed_origins) ? res.data.allowed_origins.join('\n') : ''
   } catch (e) {
     error.value = e.message
@@ -138,9 +162,10 @@ async function save() {
     } else {
       res = await api.post('/api/forms', payload)
     }
-    Object.assign(form, res.data)
-    form.style = hydrateStyle(res.data.style)
-    form.fields = res.data.fields.map((f) => ({ ...f, _k: keySeq++ }))
+    const { style, fields, ...rest } = res.data
+    Object.assign(form, rest)
+    applyStyle(style)
+    form.fields = fields.map((f) => ({ ...f, _k: keySeq++ }))
     originsText.value = Array.isArray(res.data.allowed_origins) ? res.data.allowed_origins.join('\n') : ''
     success.value = isEdit.value ? 'Form aggiornato.' : 'Form creato.'
     if (!isEdit.value) {

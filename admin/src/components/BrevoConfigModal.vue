@@ -9,7 +9,11 @@ import { api, ApiError } from '../api/client'
 // richiamare Brevo ad ogni apertura della modale.
 const props = defineProps({
   open: { type: Boolean, default: false },
-  formId: { type: [Number, String], required: true },
+  // Nullable: sul form builder resta null finche' il GET iniziale del form non
+  // arriva (prima ancora che la modale possa aprirsi, ma il valore attraversa
+  // comunque il template ad ogni render) - required:true qui darebbe un warning
+  // a vuoto ad ogni apertura della pagina di modifica.
+  formId: { type: [Number, String], default: null },
   apiKey: { type: String, default: '' },
   listId: { type: [Number, String, null], default: null },
   mapping: { type: Object, default: () => ({}) },
