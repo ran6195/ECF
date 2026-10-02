@@ -7,6 +7,7 @@ namespace Ecf\Controllers;
 use Ecf\Models\Form;
 use Ecf\Models\FormField;
 use Ecf\Services\FormRenderer;
+use Ecf\Support\FieldIcons;
 use Ecf\Support\GoogleFonts;
 use Ecf\Support\Response;
 use Illuminate\Database\Capsule\Manager as DB;
@@ -497,7 +498,7 @@ final class FormController
             return null;
         }
 
-        $allowed = ['min', 'max', 'minLength', 'maxLength', 'regex', 'link_url', 'link_text', 'start_time', 'end_time', 'step', 'exclude_past', 'exclude_weekends', 'placeholder_label'];
+        $allowed = ['min', 'max', 'minLength', 'maxLength', 'regex', 'link_url', 'link_text', 'start_time', 'end_time', 'step', 'exclude_past', 'exclude_weekends', 'placeholder_label', 'icon'];
         $boolKeys = ['exclude_past', 'exclude_weekends'];
         $out = [];
         foreach ($allowed as $k) {
@@ -512,6 +513,15 @@ final class FormController
                     $url = $this->normalizeUrl($value[$k]);
                     if ($url !== null) {
                         $out[$k] = $url;
+                    }
+                    continue;
+                }
+                // L'icona deve esistere nell'elenco noto: è un nome usato per
+                // scegliere l'SVG da iniettare, non testo libero.
+                if ($k === 'icon') {
+                    $icon = (string) $value[$k];
+                    if (FieldIcons::isValid($icon)) {
+                        $out[$k] = $icon;
                     }
                     continue;
                 }

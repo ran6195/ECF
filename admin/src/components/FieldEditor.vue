@@ -1,5 +1,7 @@
 <script setup>
 import { computed, watch } from 'vue'
+import { ICON_SUPPORTED_TYPES } from '../fieldIcons'
+import IconPicker from './IconPicker.vue'
 
 // Il field è un oggetto reattivo del parent: lo mutiamo direttamente.
 const props = defineProps({
@@ -32,6 +34,13 @@ const isPrivacyConsent = computed(() => props.field.type === 'privacy_consent')
 const isTimeSlot = computed(() => props.field.type === 'time_slot')
 const isDate = computed(() => props.field.type === 'date')
 const hasPlaceholderOption = computed(() => ['select', 'time_slot'].includes(props.field.type))
+const hasIconOption = computed(() => ICON_SUPPORTED_TYPES.includes(props.field.type))
+
+function setIcon(name) {
+  ensureValidation()
+  if (name) props.field.validation.icon = name
+  else delete props.field.validation.icon
+}
 
 // La checkbox privacy è sempre obbligatoria: forza il flag in UI (l'autorità
 // resta comunque il backend, che lo forza a prescindere da cosa arriva dal client).
@@ -106,6 +115,11 @@ function autoKey() {
         <label class="field-label">Placeholder</label>
         <input v-model="field.placeholder" placeholder="Testo segnaposto" />
       </div>
+    </div>
+
+    <div v-if="hasIconOption" class="form-row">
+      <label class="field-label">Icona (opzionale)</label>
+      <IconPicker :model-value="field.validation?.icon || ''" @update:model-value="setIcon" />
     </div>
 
     <div class="form-row">

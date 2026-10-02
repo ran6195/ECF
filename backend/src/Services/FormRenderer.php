@@ -6,6 +6,7 @@ namespace Ecf\Services;
 
 use Ecf\Models\Form;
 use Ecf\Models\FormField;
+use Ecf\Support\FieldIcons;
 use Ecf\Support\GoogleFonts;
 
 /**
@@ -88,6 +89,7 @@ final class FormRenderer
             'hidden' => $this->hidden($field),
             default => $this->input($field, $id, $requiredAttr),
         };
+        $control = $this->wrapWithIcon($control, $field);
 
         // I campi hidden non hanno label/wrapper visibile.
         if ($field->type === 'hidden') {
@@ -265,6 +267,24 @@ final class FormRenderer
         );
     }
 
+    /**
+     * Avvolge il controllo con l'icona scelta (field->validation.icon), se il
+     * tipo la supporta. Solo i campi a riga singola: niente textarea (lo
+     * screenshot di riferimento non ne mette una su "Messaggio") né gruppi
+     * radio/checkbox (non hanno un singolo controllo da affiancare).
+     */
+    private function wrapWithIcon(string $control, FormField $field): string
+    {
+        $supportsIcon = in_array($field->type, ['text', 'email', 'number', 'date', 'select', 'time_slot'], true);
+        $icon = (string) (($field->validation ?? [])['icon'] ?? '');
+
+        if (!$supportsIcon || $icon === '' || !FieldIcons::isValid($icon)) {
+            return $control;
+        }
+
+        return '<div class="ecf-input-wrap">' . FieldIcons::svg($icon) . $control . '</div>';
+    }
+
     private function renderPrivacyConsent(FormField $field): string
     {
         $id = 'ecf-' . $this->e($field->key);
@@ -395,6 +415,9 @@ final class FormRenderer
           .ecf-input { width: 100%; padding: 10px 12px; font-family: inherit; font-size: .95rem; border: 1px solid var(--ecf-border); border-radius: var(--ecf-radius); background: var(--ecf-bg); color: var(--ecf-text); transition: border-color .15s, box-shadow .15s; }
           .ecf-input:focus { outline: none; border-color: var(--ecf-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ecf-primary) 22%, transparent); }
           .ecf-textarea { resize: vertical; min-height: 96px; }
+          .ecf-input-wrap { position: relative; }
+          .ecf-input-wrap .ecf-input { padding-left: 40px; }
+          .ecf-input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--ecf-border); pointer-events: none; }
           .ecf-options { display: flex; flex-direction: column; gap: 8px; }
           .ecf-option { display: flex; align-items: center; gap: 8px; font-weight: 400; font-size: .95rem; cursor: pointer; color: var(--ecf-text); }
           .ecf-option input { margin: 0; accent-color: var(--ecf-primary); }

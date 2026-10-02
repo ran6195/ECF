@@ -21,3 +21,6 @@ Thumbs.db
 *.log
 .idea/
 .vscode/
+
+# File di consegna locali (non codice del progetto)
+/fonts.txt
