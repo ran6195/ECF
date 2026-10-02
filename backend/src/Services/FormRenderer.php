@@ -392,14 +392,14 @@ final class FormRenderer
           .ecf-field { display: flex; flex-direction: column; gap: 6px; border: 0; padding: 0; margin: 0; }
           .ecf-label { font-weight: 600; font-size: .9rem; color: var(--ecf-text); }
           .ecf-req { color: #dc2626; }
-          .ecf-input { width: 100%; padding: 10px 12px; font-size: .95rem; border: 1px solid var(--ecf-border); border-radius: var(--ecf-radius); background: var(--ecf-bg); color: var(--ecf-text); transition: border-color .15s, box-shadow .15s; }
+          .ecf-input { width: 100%; padding: 10px 12px; font-family: inherit; font-size: .95rem; border: 1px solid var(--ecf-border); border-radius: var(--ecf-radius); background: var(--ecf-bg); color: var(--ecf-text); transition: border-color .15s, box-shadow .15s; }
           .ecf-input:focus { outline: none; border-color: var(--ecf-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ecf-primary) 22%, transparent); }
           .ecf-textarea { resize: vertical; min-height: 96px; }
           .ecf-options { display: flex; flex-direction: column; gap: 8px; }
           .ecf-option { display: flex; align-items: center; gap: 8px; font-weight: 400; font-size: .95rem; cursor: pointer; color: var(--ecf-text); }
           .ecf-option input { margin: 0; accent-color: var(--ecf-primary); }
           .ecf-actions { margin-top: 20px; }
-          .ecf-submit { appearance: none; border: 0; cursor: pointer; background: var(--ecf-submit-bg); color: var(--ecf-btn-text); font-size: .95rem; font-weight: 600; padding: 11px 22px; border-radius: var(--ecf-radius); transition: filter .15s; }
+          .ecf-submit { appearance: none; border: 0; cursor: pointer; background: var(--ecf-submit-bg); color: var(--ecf-btn-text); font-family: inherit; font-size: .95rem; font-weight: 600; padding: 11px 22px; border-radius: var(--ecf-radius); transition: filter .15s; }
           .ecf-submit:hover { filter: brightness(0.92); }
           .ecf-submit:disabled { opacity: .6; cursor: default; }
           .ecf-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
