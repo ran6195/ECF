@@ -1,6 +1,8 @@
 <script setup>
 import { computed } from 'vue'
 import { DEFAULT_THEME, FONT_OPTIONS, COLOR_FIELDS, ALIGN_OPTIONS } from '../theme'
+import { googleFontCssStack } from '../googleFonts'
+import GoogleFontPicker from './GoogleFontPicker.vue'
 
 // Mutiamo direttamente l'oggetto style reattivo del parent.
 const props = defineProps({
@@ -56,6 +58,26 @@ const hasCustomSubmitBg = computed({
 function resetTheme() {
   Object.assign(props.style.theme, { ...DEFAULT_THEME })
   delete props.style.theme.submitBg
+  delete props.style.theme.googleFont
+}
+
+// Selezionare un font di sistema dal menu spegne l'eventuale font Google attivo
+// (altrimenti il rendering lo riprenderebbe comunque: vedi FormRenderer::fontFamilyValue(),
+// che dà sempre precedenza a googleFont quando presente e valido).
+function onSystemFontChange() {
+  delete props.style.theme.googleFont
+}
+
+// Selezionare un font Google imposta sia il nome "grezzo" (usato dal server per
+// generare il link e il fallback) sia lo stack CSS (per coerenza dei dati e per
+// chi legge fontFamily direttamente, es. un futuro export).
+function onGoogleFontChange(name) {
+  if (name) {
+    props.style.theme.googleFont = name
+    props.style.theme.fontFamily = googleFontCssStack(name)
+  } else {
+    delete props.style.theme.googleFont
+  }
 }
 </script>
 
@@ -78,8 +100,8 @@ function resetTheme() {
 
     <div class="grid-2" style="margin-top:14px">
       <div>
-        <label class="field-label small">Font</label>
-        <select v-model="style.theme.fontFamily">
+        <label class="field-label small">Font di sistema</label>
+        <select v-model="style.theme.fontFamily" @change="onSystemFontChange">
           <option v-for="f in FONT_OPTIONS" :key="f.value" :value="f.value">{{ f.label }}</option>
         </select>
       </div>
@@ -87,6 +109,14 @@ function resetTheme() {
         <label class="field-label small">Raggio bordi: {{ radiusPx }}px</label>
         <input type="range" min="0" max="40" v-model.number="radiusPx" />
       </div>
+    </div>
+
+    <div class="form-row" style="margin-top:14px">
+      <label class="field-label small">Font Google (opzionale)</label>
+      <GoogleFontPicker :model-value="style.theme.googleFont || ''" @update:model-value="onGoogleFontChange" />
+      <p class="muted small" style="margin-top:4px">
+        Se impostato, sostituisce il font di sistema sopra; caricato direttamente dai server di Google Fonts.
+      </p>
     </div>
 
     <div class="grid-2" style="margin-top:14px; align-items:end">

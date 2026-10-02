@@ -6,6 +6,7 @@ namespace Ecf\Services;
 
 use Ecf\Models\Form;
 use Ecf\Models\FormField;
+use Ecf\Support\GoogleFonts;
 
 /**
  * Genera l'HTML del form (fragment + <style> inline) a partire da form_fields.
@@ -373,10 +374,11 @@ final class FormRenderer
         $vars = $this->themeVars($theme);
         $custom = $this->sanitizeCustomCss($form->customCss());
         $customBlock = $custom !== '' ? "\n          /* CSS personalizzato del form */\n          {$custom}" : '';
+        $fontLinks = $this->googleFontLinks($theme);
 
         // Il CSS base usa variabili (--ecf-*) sovrascrivibili dal tema del form.
         return <<<CSS
-        <style>
+        {$fontLinks}<style>
           :host { all: initial; display: block; width: 100%; }
           .ecf-form-wrap {
         {$vars}
@@ -425,7 +427,7 @@ final class FormRenderer
             '--ecf-bg' => $theme['background'],
             '--ecf-border' => $theme['border'],
             '--ecf-radius' => $theme['radius'],
-            '--ecf-font' => $theme['fontFamily'],
+            '--ecf-font' => $this->fontFamilyValue($theme),
             '--ecf-btn-text' => $theme['buttonText'],
             '--ecf-submit-bg' => $theme['submitBg'] ?? $theme['primary'],
             '--ecf-max-width' => $theme['maxWidth'],
@@ -440,6 +442,45 @@ final class FormRenderer
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Font effettivo del form: se è impostato un font Google valido ha sempre
+     * la precedenza sul fontFamily "di sistema" salvato (coerenza: il client
+     * non deve tenere i due valori perfettamente sincronizzati, decide il server).
+     */
+    private function fontFamilyValue(array $theme): string
+    {
+        $googleFont = $theme['googleFont'] ?? null;
+        if (is_string($googleFont) && $googleFont !== '' && GoogleFonts::isValid($googleFont)) {
+            return GoogleFonts::cssStack($googleFont);
+        }
+
+        return (string) $theme['fontFamily'];
+    }
+
+    /**
+     * <link> per caricare il font Google scelto (preconnect + foglio di stile
+     * CSS2), da anteporre al <style> del form. Stringa vuota se non impostato
+     * o non valido: stesso trust boundary di normalizeStyle() lato controller,
+     * controllato di nuovo qui perché FormRenderer non si fida ciecamente di
+     * ciò che legge da Form::theme() (difesa in profondità).
+     */
+    private function googleFontLinks(array $theme): string
+    {
+        $name = $theme['googleFont'] ?? null;
+        if (!is_string($name) || $name === '' || !GoogleFonts::isValid($name)) {
+            return '';
+        }
+
+        $url = $this->e(GoogleFonts::cssUrl($name));
+
+        return <<<HTML
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="{$url}">
+
+        HTML;
     }
 
     /**

@@ -7,6 +7,7 @@ namespace Ecf\Controllers;
 use Ecf\Models\Form;
 use Ecf\Models\FormField;
 use Ecf\Services\FormRenderer;
+use Ecf\Support\GoogleFonts;
 use Ecf\Support\Response;
 use Illuminate\Database\Capsule\Manager as DB;
 use Illuminate\Database\Eloquent\Collection;
@@ -386,9 +387,9 @@ final class FormController
             return null;
         }
 
-        // submitBg non è in THEME_DEFAULTS (nessun default fisso, vedi Form::theme()):
-        // va aggiunto esplicitamente alla whitelist, non tramite array_keys().
-        $allowedTokens = [...array_keys(Form::THEME_DEFAULTS), 'submitBg'];
+        // submitBg e googleFont non sono in THEME_DEFAULTS (nessun default fisso):
+        // vanno aggiunti esplicitamente alla whitelist, non tramite array_keys().
+        $allowedTokens = [...array_keys(Form::THEME_DEFAULTS), 'submitBg', 'googleFont'];
         $theme = [];
         $rawTheme = is_array($value['theme'] ?? null) ? $value['theme'] : [];
         foreach ($allowedTokens as $token) {
@@ -402,6 +403,11 @@ final class FormController
                 }
                 // La posizione accetta solo i tre allineamenti previsti.
                 if ($token === 'align' && !in_array($clean, ['left', 'center', 'right'], true)) {
+                    continue;
+                }
+                // Il font Google deve esistere nell'elenco noto: serve a costruire
+                // l'URL del foglio di stile, un nome arbitrario non andrebbe bene.
+                if ($token === 'googleFont' && !GoogleFonts::isValid($clean)) {
                     continue;
                 }
                 $theme[$token] = $clean;
